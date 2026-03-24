@@ -7,15 +7,13 @@ import WaitlistForm from './components/WaitlistForm';
 function App() {
   return (
     <Router>
-      <div className="App">
         <Routes>
-          {/* CRITICAL: The "/" path MUST point to Home */}
+          {/* THE PRIMARY GATEWAY (Your index.html content) */}
           <Route path="/" element={<Home />} />
           
-          {/* The "/join" path points to the page in your screenshot */}
+          {/* THE NEW TYPEWRITER PROTOCOL (/join) */}
           <Route path="/join" element={<WaitlistForm />} />
         </Routes>
-      </div>
     </Router>
   );
 }

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
     const navigate = useNavigate();
+    const [patronId, setPatronId] = useState('');
 
     return (
         <div id="gateway-overlay">
@@ -16,24 +17,28 @@ const Home = () => {
             <div className="terminal-box">
                 <div id="system-status">[SYSTEM]: NODE_502_ESTABLISHED (LOU_KY)</div>
                 <div id="system-action">[SYSTEM]: PROVISIONING_HEAVYWEIGHT_ASSETS...</div>
-                <div>[SYSTEM]: KERNEL_ENCRYPTION_ACTIVE.</div>
-                
+                <div>[SYSTEM]: KERNEL_ENCRYPTION_ACTIVE.</div> 
                 <div className="status-alert" id="status-display">
                     {">> STATUS: REQUISITION_PHASE_LOCKED <<"}
                 </div>
-
+                
                 <div id="login-inputs-area">
                     <div className="login-row">
                         <span className="terminal-prompt">PATRON_ID:</span>
                         <div className="input-wrapper">
-                            {/* This is your classic login input */}
-                            <input type="text" className="terminal-input-hidden" placeholder="_" autoFocus />
+                            <input 
+                                type="text" 
+                                className="terminal-input-hidden" 
+                                style={{ color: 'white', position: 'relative', opacity: 1 }}
+                                onChange={(e) => setPatronId(e.target.value)}
+                                autoFocus 
+                            />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* THE REDIRECT TRIGGER: This activates the page in your screenshot */}
+            {/* THIS BUTTON NOW TRIGGERS THE NEW REACT PAGE */}
             <button className="btn-signup" onClick={() => navigate('/join')}>
                 JOIN_WAITLIST (REQUEST_ACCESS)
             </button>
