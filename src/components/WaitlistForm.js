@@ -33,40 +33,56 @@ const WaitlistForm = () => {
             setMessage(err.response?.data?.message || '❌ Registration Failed. Try again.');
         }
     };
+return (
+  <div className="waitlist-gate">
+    <p className="status-message">alwrig12@almty:~$ join --waitlist</p>
+    
+    <form onSubmit={onSubmit}>
+      <div className="terminal-line">
+        <span className="prompt">USER_ID:</span>
+        <input 
+          type="text" 
+          name="username" 
+          className="terminal-input"
+          value={username} 
+          onChange={onChange} 
+          required 
+          autoComplete="off"
+        />
+      </div>
 
-    return (
-        <div className="waitlist-gate">
-            <h2>JOIN THE ALMTY WAITLIST</h2>
-            <form onSubmit={onSubmit}>
-                <input 
-                    type="text" 
-                    placeholder="Username" 
-                    name="username" 
-                    value={username} 
-                    onChange={onChange} 
-                    required 
-                />
-                <input 
-                    type="email" 
-                    placeholder="Email Address" 
-                    name="email" 
-                    value={email} 
-                    onChange={onChange} 
-                    required 
-                />
-                <input 
-                    type="password" 
-                    placeholder="Password" 
-                    name="password" 
-                    value={password} 
-                    onChange={onChange} 
-                    required 
-                    minLength="6"
-                />
-                <button type="submit">INITIALIZE IDENTITY</button>
-            </form>
-            {message && <p className="status-message">{message}</p>}
-        </div>
+      <div className="terminal-line">
+        <span className="prompt">EMAIL_ADDR:</span>
+        <input 
+          type="email" 
+          name="email" 
+          className="terminal-input"
+          value={email} 
+          onChange={onChange} 
+          required 
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="terminal-line">
+        <span className="prompt">ACCESS_KEY:</span>
+        <input 
+          type="password" 
+          name="password" 
+          className="terminal-input"
+          value={password} 
+          onChange={onChange} 
+          required 
+        />
+      </div>
+
+      <button type="submit" className="terminal-btn">
+        [ EXECUTE_INITIALIZATION ]
+      </button>
+    </form>
+    
+    {message && <p className="status-message" style={{marginTop: '20px'}}>{message}</p>}
+  </div>
     );
 };
 
