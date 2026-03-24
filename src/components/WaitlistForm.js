@@ -35,9 +35,13 @@ const WaitlistForm = () => {
     };
 return (
   <div className="waitlist-gate">
-    <p className="status-message">join --waitlist</p>
+    {/* THE SYSTEM-LEVEL TYPEWRITER LINE */}
+    <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+      <span className="prompt" style={{ marginRight: '10px' }}>system@almty:~$</span>
+      <div className="typewriter-text">join --waitlist</div>
+    </div>
     
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} style={{ marginTop: '30px' }}>
       <div className="terminal-line">
         <span className="prompt">USER_ID:</span>
         <input 
@@ -81,9 +85,13 @@ return (
       </button>
     </form>
     
-    {message && <p className="status-message" style={{marginTop: '20px'}}>{message}</p>}
+    {message && (
+      <p className="status-message" style={{ marginTop: '20px', color: '#32CD32' }}>
+        {message}
+      </p>
+    )}
   </div>
-    );
+);
 };
 
 export default WaitlistForm;
