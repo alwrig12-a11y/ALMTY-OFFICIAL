@@ -35,7 +35,7 @@ const WaitlistForm = () => {
     };
 return (
   <div className="waitlist-gate">
-    <p className="status-message">alwrig12@almty:~$ join --waitlist</p>
+    <p className="status-message">join --waitlist</p>
     
     <form onSubmit={onSubmit}>
       <div className="terminal-line">
