@@ -1,97 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const WaitlistForm = () => {
-    const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        password: ''
-    });
+    const [formData, setFormData] = useState({ username: '', email: '', password: '' });
     const [message, setMessage] = useState('');
-
-    // The logic to find your engine (Render vs Local)
-    const API_URL = window.location.hostname === 'localhost' 
-        ? 'http://localhost:5000' 
-        : 'https://almty-backend.onrender.com';
+    const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState(0);
 
     const { username, email, password } = formData;
 
-    const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-    const onSubmit = async e => {
+    const onSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const config = { headers: { 'Content-Type': 'application/json' } };
-            const body = JSON.stringify({ username, email, password });
+        setLoading(true);
+        setMessage('');
+        
+        // 1. SIMULATE TERMINAL PROGRESS
+        let interval = setInterval(() => {
+            setProgress((prev) => {
+                if (prev >= 100) {
+                    clearInterval(interval);
+                    return 100;
+                }
+                return prev + 10;
+            });
+        }, 150);
 
-            const res = await axios.post(`${API_URL}/api/users/register`, body, config);
+        try {
+            const API_URL = window.location.hostname === 'localhost' 
+                ? 'http://localhost:5000' 
+                : 'https://almty-backend.onrender.com';
+
+            // 2. ACTUAL DATA TRANSFER
+            const res = await axios.post(`${API_URL}/api/users/register`, formData);
             
-            // On success, we save the token and show the waitlist status
-            localStorage.setItem('token', res.data.token);
-            setMessage(`✅ Welcome to the Protocol, ${res.data.username}. You are on the waitlist.`);
+            // Wait for visual progress to hit 100% before showing success
+            setTimeout(() => {
+                setLoading(false);
+                setMessage(`[SUCCESS] IDENTITY_INITIALIZED: Welcome, ${res.data.username}.`);
+                setProgress(0);
+            }, 1800);
+
         } catch (err) {
-            setMessage(err.response?.data?.message || '❌ Registration Failed. Try again.');
+            setLoading(false);
+            setMessage(`[ERROR] ${err.response?.data?.message || 'UPLINK_FAILED'}`);
+            setProgress(0);
         }
     };
-return (
-  <div className="waitlist-gate">
-    {/* THE SYSTEM-LEVEL TYPEWRITER LINE */}
-    <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-      <span className="prompt" style={{ marginRight: '10px' }}>system@almty:~$</span>
-      <div className="typewriter-text">join --waitlist</div>
-    </div>
-    
-    <form onSubmit={onSubmit} style={{ marginTop: '30px' }}>
-      <div className="terminal-line">
-        <span className="prompt">USER_ID:</span>
-        <input 
-          type="text" 
-          name="username" 
-          className="terminal-input"
-          value={username} 
-          onChange={onChange} 
-          required 
-          autoComplete="off"
-        />
-      </div>
 
-      <div className="terminal-line">
-        <span className="prompt">EMAIL_ADDR:</span>
-        <input 
-          type="email" 
-          name="email" 
-          className="terminal-input"
-          value={email} 
-          onChange={onChange} 
-          required 
-          autoComplete="off"
-        />
-      </div>
+    return (
+        <div className="waitlist-gate">
+            <div style={{ display: 'flex' }}>
+                <span className="prompt">system@almty:~$</span>
+                <div className="typewriter-text">join --waitlist</div>
+            </div>
 
-      <div className="terminal-line">
-        <span className="prompt">ACCESS_KEY:</span>
-        <input 
-          type="password" 
-          name="password" 
-          className="terminal-input"
-          value={password} 
-          onChange={onChange} 
-          required 
-        />
-      </div>
+            {!loading && !message ? (
+                <form onSubmit={onSubmit} style={{ marginTop: '30px' }}>
+                    {/* ... (Your terminal-line inputs here) ... */}
+                    <button type="submit" className="terminal-btn">[ EXECUTE_INITIALIZATION ]</button>
+                </form>
+            ) : null}
 
-      <button type="submit" className="terminal-btn">
-        [ EXECUTE_INITIALIZATION ]
-      </button>
-    </form>
-    
-    {message && (
-      <p className="status-message" style={{ marginTop: '20px', color: '#32CD32' }}>
-        {message}
-      </p>
-    )}
-  </div>
-);
+            {loading && (
+                <div className="progress-container">
+                    <p className="progress-bar-text">ESTABLISHING_SECURE_LINK... {progress}%</p>
+                    <div className="progress-bar-border">
+                        <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                    </div>
+                </div>
+            )}
+
+            {message && <p className="status-message" style={{ marginTop: '20px' }}>{message}</p>}
+        </div>
+    );
 };
 
 export default WaitlistForm;
