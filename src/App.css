@@ -191,3 +191,28 @@ button:hover {
   height: 100%;
   transition: width 0.2s ease-in-out;
 }
+.home-content {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.description {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 30px;
+}
+
+.back-btn {
+  background: transparent;
+  color: #ff4d4d; /* Red for "Cancel/Back" */
+  border: 1px solid #ff4d4d;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 20px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.back-btn:hover {
+  background: #ff4d4d;
+  color: #000;
+}
