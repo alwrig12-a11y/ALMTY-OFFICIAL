@@ -19,7 +19,7 @@ const Home = () => {
                 <div id="system-action">[SYSTEM]: PROVISIONING_HEAVYWEIGHT_ASSETS...</div>
                 <div>[SYSTEM]: KERNEL_ENCRYPTION_ACTIVE.</div>
                 <div className="status-alert" id="status-display">
-                    >> STATUS: REQUISITION_PHASE_LOCKED <<
+                     STATUS: REQUISITION_PHASE_LOCKED
                 </div>
 
                 <div id="login-inputs-area">
