@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
     const navigate = useNavigate();
-    const [patronId, setPatronId] = useState('');
 
     return (
         <div id="gateway-overlay">
@@ -27,24 +26,15 @@ const Home = () => {
                     <div className="login-row">
                         <span className="terminal-prompt">PATRON_ID:</span>
                         <div className="input-wrapper">
-                            <input 
-                                type="text" 
-                                className="terminal-input-hidden" 
-                                style={{ color: 'white', position: 'relative', opacity: 1 }}
-                                onChange={(e) => setPatronId(e.target.value)}
-                                autoFocus 
-                                autoComplete="off"
-                            />
+                            {/* This is your classic login input */}
+                            <input type="text" className="terminal-input-hidden" placeholder="_" autoFocus />
                         </div>
                     </div>
                 </div>
             </div>
 
-            <button 
-                className="btn-signup" 
-                id="signup-toggle" 
-                onClick={() => navigate('/join')}
-            >
+            {/* THE REDIRECT TRIGGER: This activates the page in your screenshot */}
+            <button className="btn-signup" onClick={() => navigate('/join')}>
                 JOIN_WAITLIST (REQUEST_ACCESS)
             </button>
 
@@ -54,8 +44,8 @@ const Home = () => {
                     NOTICE: ALL ASSETS, PROTOCOLS, AND VISUAL IDENTITIES ARE THE EXCLUSIVE INTELLECTUAL PROPERTY OF ALMTY LLC.
                 </div>
             </div>
-        </div> // This closes gateway-overlay
-    ); // This closes return
-}; // This closes the component
+        </div>
+    );
+};
 
 export default Home;
