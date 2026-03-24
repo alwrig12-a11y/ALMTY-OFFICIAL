@@ -37,26 +37,53 @@
   }
 }
 .almty-logo-glow {
-  width: 300px; /* Adjust size as needed */
+  width: 300px; /* Adjust based on your logo shape */
   height: auto;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   
-  /* THE GLOW EFFECT */
-  /* Syntax: filter: drop-shadow(offset-x offset-y blur-radius color) */
-  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.7));
+  /* LIME GREEN DROP SHADOW */
+  /* This targets the actual pixels of your logo, not the box around it */
+  filter: drop-shadow(0 0 15px rgba(50, 205, 50, 0.8));
   
-  /* OPTIONAL: Pulse animation to make it look "alive" */
-  animation: logo-pulse 3s infinite ease-in-out;
+  /* TRIGGER THE PULSE */
+  animation: green-pulse 3s infinite ease-in-out;
 }
 
-@keyframes logo-pulse {
-  0% { filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5)); }
-  50% { filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.9)); }
-  100% { filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5)); }
+/* THE PULSING PROTOCOL */
+@keyframes green-pulse {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(50, 205, 50, 0.6));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 30px rgba(50, 205, 50, 1));
+    transform: scale(1.02); /* Slight scale up makes it look like it's "breathing" */
+  }
+  100% {
+    filter: drop-shadow(0 0 10px rgba(50, 205, 50, 0.6));
+    transform: scale(1);
+  }
 }
 
 .protocol-text {
   letter-spacing: 5px;
-  font-family: 'Courier New', Courier, monospace; /* Tech/Terminal vibe */
-  color: #ffffff;
+  font-family: 'Courier New', Courier, monospace;
+  color: #32CD32; /* Matches the lime green */
+  text-shadow: 0 0 5px rgba(50, 205, 50, 0.5);
+}
+button {
+  background-color: transparent;
+  color: #32CD32;
+  border: 2px solid #32CD32;
+  padding: 10px 20px;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  transition: 0.3s;
+  box-shadow: 0 0 10px rgba(50, 205, 50, 0.3);
+}
+
+button:hover {
+  background-color: #32CD32;
+  color: #000;
+  box-shadow: 0 0 20px rgba(50, 205, 50, 0.8);
 }
