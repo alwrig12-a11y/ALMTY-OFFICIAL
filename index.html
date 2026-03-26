@@ -1703,249 +1703,55 @@
          * Toggles the Gateway terminal between Standard Login mode 
          * and the Public Waitlist Registration mode.
          */
-        function toggleSignup() 
-        {
-            gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
-            resetGateway();
-            
-            const statusDisplay = document.getElementById('status-display');
-            const userPrompt = document.getElementById('user-prompt');
-            const keyPrompt = document.getElementById('key-prompt');
-
-            if (gatewayMode === 'signup') 
-            {
-                statusDisplay.innerText = ">> STATUS: WAITLIST_ENROLLMENT_ACTIVE <<";
-                statusDisplay.style.color = "var(--socio-green)";
-                statusDisplay.style.borderColor = "var(--socio-green)";
-                userPrompt.innerText = "DESIRED_ID:";
-                keyPrompt.innerText = "COMM_LINK(EMAIL):";
-                keyInput.type = "text"; 
-                signupBtn.innerText = "RETURN_TO_LOGIN";
-            } 
-            else 
-            {
-                statusDisplay.innerText = ">> STATUS: REQUISITION_PHASE_LOCKED <<";
-                statusDisplay.style.color = "var(--canary-yellow)";
-                statusDisplay.style.borderColor = "var(--canary-yellow)";
-                userPrompt.innerText = "PATRON_ID:";
-                keyPrompt.innerText = "CLEARANCE_KEY:";
-                keyInput.type = "password"; 
-                signupBtn.innerText = "JOIN_WAITLIST (REQUEST_ACCESS)";
-            }
-        }
-
-        /**
-         * Purges current gateway input states to prevent data bleed between modes.
-         */
-        function resetGateway() 
-        {
-            loginPhase = 'user';
-            
-            userInput.disabled = false;
-            userInput.value = "";
-            userDisplay.innerText = "";
-            userCursor.style.display = 'inline-block';
-            
-            keyInput.value = "";
-            keyDisplay.innerText = "";
-            keyRow.style.display = 'none';
-            
-            userInput.focus();
-        }
-
-        /* -------------------------------------------------------------------------
-           TERMINAL EVENT LISTENERS (TYPEWRITER SYNC)
-           ------------------------------------------------------------------------- */
-        
-        userInput.addEventListener('input', () => 
-        { 
-            userDisplay.innerText = userInput.value; 
-        });
-
-        userInput.addEventListener('keydown', (e) => 
-        {
-            if (e.key === 'Enter' && userInput.value.trim() !== '') 
-            {
-                loginPhase = 'key';
-                userCursor.style.display = 'none';
-                userInput.disabled = true;
-                keyRow.style.display = 'flex';
-                keyInput.focus();
-            }
-        });
-
-     // 1. THE VISUAL MASK (Handles the asterisks as you type)
-keyInput.addEventListener('input', () => 
+function toggleSignup() 
 {
-    if (gatewayMode === 'login') 
+    gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
+    resetGateway();
+    
+    const statusDisplay = document.getElementById('status-display');
+    const userPrompt = document.getElementById('user-prompt');
+    const keyPrompt = document.getElementById('key-prompt');
+
+    if (gatewayMode === 'signup') 
     {
-        // Masks the password with asterisks in the UI
-        keyDisplay.innerText = "*".repeat(keyInput.value.length);
+        // TRIGGER REACT-STYLE TYPEWRITER EFFECT
+        runTypewriter("system@almty:~$ join --waitlist", statusDisplay);
+        
+        statusDisplay.style.color = "var(--socio-green)";
+        statusDisplay.style.borderColor = "var(--socio-green)";
+        
+        // Match the React field names
+        userPrompt.innerText = "USER_ID:"; 
+        keyPrompt.innerText = "EMAIL_ADDR:";
+        keyInput.type = "text"; // Change from password to text for email
+        signupBtn.innerText = "RETURN_TO_LOGIN";
     } 
     else 
     {
-        // Shows plain text for the email waitlist mode
-        keyDisplay.innerText = keyInput.value;
+        statusDisplay.innerText = ">> STATUS: REQUISITION_PHASE_LOCKED <<";
+        statusDisplay.style.color = "var(--canary-yellow)";
+        statusDisplay.style.borderColor = "var(--canary-yellow)";
+        userPrompt.innerText = "PATRON_ID:";
+        keyPrompt.innerText = "CLEARANCE_KEY:";
+        keyInput.type = "password"; 
+        signupBtn.innerText = "JOIN_WAITLIST (REQUEST_ACCESS)";
     }
-});
+}
 
-// THE AUTHENTICATION GATE (Connecting to your real Backend)
-keyInput.addEventListener('keydown', async (e) => 
-{
-    if (e.key === 'Enter') 
-    {
-        // Use your real username registered in the database for the Patron_ID
-        const username = userInput.value.toLowerCase().trim(); 
-        const password = keyInput.value.trim();
-        const statusDisplay = document.getElementById('status-display');
-
-        statusDisplay.innerText = ">> STATUS: VERIFYING_CREDENTIALS... <<";
-
-        try {
-                // THE ALMTY NODE ROUTER
-                // Detects if the protocol is running locally or in production
-            const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                ? 'http://localhost:5000' 
-                : 'https://almty-backend.onrender.com'; // <--- PASTE YOUR RENDER URL HERE
-                // Firing the request to your local ALMTY server
-            const response = await fetch(`${API_URL}/api/users/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // SUCCESS: The Backend verified you!
-                // We store the user info and the "Owner" status
-                isMasterOverseer = data.isAdmin; 
-                sessionStorage.setItem('almty_token', data.token); // Store the digital badge
-                
-                startLoadingSequence(data.name); 
-            } else {
-                // DENIED: Backend rejected the username or password
-                statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-                statusDisplay.style.color = "var(--alert-red)";
-                statusDisplay.style.borderColor = "var(--alert-red)";
-            }
-        } catch (error) {
-            // SERVER DOWN: Your backend (node server.js) isn't running
-            statusDisplay.innerText = ">> ERROR: NODE_OFFLINE_OR_UNREACHABLE <<";
-            statusDisplay.style.color = "var(--alert-red)";
+// THE TYPEWRITER HELPER (The "React" Effect)
+function runTypewriter(text, element) {
+    element.innerText = "";
+    let i = 0;
+    const speed = 40; // Milliseconds per character
+    function type() {
+        if (i < text.length) {
+            element.innerText += text.charAt(i);
+            i++;
+            setTimeout(type, speed);
         }
     }
-});
-
-        /**
-         * Simulates node decryption upon successful credential match.
-         * @param {string} patronId - The authenticated user name.
-         */
-        function startLoadingSequence(patronId) 
-        {
-            document.getElementById('login-inputs-area').style.display = 'none';
-            signupBtn.style.display = 'none';
-            
-            const loadingContainer = document.getElementById('loading-container');
-            const progressFill = document.getElementById('progress-fill');
-            const percentText = document.getElementById('loading-percent');
-            
-            loadingContainer.style.display = 'block';
-            
-            let progress = 0;
-            const interval = setInterval(() => 
-            {
-                progress += Math.floor(Math.random() * 5) + 2; 
-                if (progress >= 100) 
-                {
-                    progress = 100;
-                    clearInterval(interval);
-                    executeEntry(patronId);
-                }
-                
-                progressFill.style.width = progress + '%';
-                percentText.innerText = `DECRYPTING_NODE_DATA: ${progress}%`;
-            }, 80);
-        }
-
-        /**
-         * Executes the DOM swap from Gateway Overlay to the Main Protocol Interface.
-         * Sets session authorization headers.
-         * @param {string} patronId - The authenticated user name.
-         */
-        function executeEntry(patronId) 
-        {
-            sessionStorage.setItem('protocol_clearance', 'authorized');
-            sessionStorage.setItem('current_user', patronId);
-            
-            if (isMasterOverseer) 
-            {
-                sessionStorage.setItem('is_master', 'true');
-            }
-            
-            document.getElementById('gateway-overlay').style.opacity = '0';
-            
-            setTimeout(() => 
-            {
-                const initial = (patronId && patronId.length > 0) ? patronId.charAt(0).toUpperCase() : 'A';
-                document.getElementById('gateway-overlay').style.display = 'none';
-                document.getElementById('main-site').style.display = 'flex';
-                document.getElementById('user-initial').innerText = initial;
-                
-                // Route directly to Master Dashboard if authenticated as owner
-                if (isMasterOverseer) 
-                {
-                    setRank(5); // Overseer Rank
-                    updateSidebar();
-                    loadPage('master_dashboard');
-                    
-                    // Hide sim-hub toggles for master to prevent UI breakage
-                    const simHub = document.getElementById('rank-toggles-container');
-                    if (simHub) simHub.style.display = 'none';
-                } 
-                else 
-                {
-                    setRank(4); // Default Patron
-                    updateSidebar();
-                    loadPage('manifesto');
-                }
-            }, 800);
-        }
-
-        /**
-         * Initialization Hook. Bypasses gateway if session holds active clearance.
-         */
-        window.addEventListener('load', () => 
-        {
-            document.getElementById('cart-count').innerText = stashStream.length;
-            
-            if (sessionStorage.getItem('protocol_clearance') === 'authorized') 
-            {
-                const patronId = sessionStorage.getItem('current_user') || 'ALMTY';
-                isMasterOverseer = sessionStorage.getItem('is_master') === 'true';
-                
-                document.getElementById('gateway-overlay').style.display = 'none';
-                document.getElementById('main-site').style.display = 'flex';
-                document.getElementById('user-initial').innerText = patronId.charAt(0).toUpperCase();
-                
-                if (isMasterOverseer) 
-                {
-                    setRank(5);
-                    updateSidebar();
-                    loadPage('master_dashboard');
-                    
-                    const simHub = document.getElementById('rank-toggles-container');
-                    if (simHub) simHub.style.display = 'none';
-                } 
-                else 
-                {
-                    setRank(4);
-                    updateSidebar();
-                    loadPage('manifesto');
-                }
-            }
-        });
-
+    type();
+}       
         /**
          * ========================================================================
          * GLOBAL EVENT DELEGATION & UI LOGIC
