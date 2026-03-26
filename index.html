@@ -1698,15 +1698,6 @@
                 keyInput.focus();
             }
         }
-    <script>
-    /** * ALMTY GLOBAL STATE: DEFINED ONCE 
-     * Maintaining Integrity for Node 502
-     */
-    let gatewayMode = 'login'; 
-    let loginPhase = 'user';
-    let selectedSize = null; // Added this back in for your shop logic
-    let isMasterOverseer = false;
-
     /* --- THE REST OF YOUR FUNCTIONS BELOW --- */
 
     function toggleSignup() {
@@ -1717,7 +1708,7 @@
         const keyPrompt = document.getElementById('key-prompt');
 
         if (gatewayMode === 'signup') {
-            statusDisplay.innerText = {">> STATUS: WAITLIST_ENROLLMENT_ACTIVE <<"};
+            statusDisplay.innerText = ">> STATUS: WAITLIST_ENROLLMENT_ACTIVE <<";
             statusDisplay.style.color = "var(--socio-green)";
             statusDisplay.style.borderColor = "var(--socio-green)";
             userPrompt.innerText = "DESIRED_ID:";
@@ -1734,9 +1725,6 @@
             signupBtn.innerText = "JOIN_WAITLIST (REQUEST_ACCESS)";
         }
     }
-
-    // ... (Keep the rest of your resetGateway, event listeners, and fetch logic here)
-</script>
 
     /**
  * [PROTOCOL]: RESET_GATEWAY
@@ -1915,22 +1903,21 @@ function resetGateway() {
         }
     });
         /**
-         * Toggles the Gateway terminal between Standard Login mode 
-         * and the Public Waitlist Registration mode.
+         * THE TYPEWRITER PROTOCOL
          */
-
-    element.innerText = "";
-    let i = 0;
-    const speed = 40; // Milliseconds per character
-    function type() {
-        if (i < text.length) {
-            element.innerText += text.charAt(i);
-            i++;
-            setTimeout(type, speed);
+        function runTypewriter(text, element) {
+            element.innerText = "";
+            let i = 0;
+            const speed = 40; 
+            function type() {
+                if (i < text.length) {
+                    element.innerText += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
         }
-    }
-    type();
-}    
         /**
          * ========================================================================
          * GLOBAL EVENT DELEGATION & UI LOGIC
