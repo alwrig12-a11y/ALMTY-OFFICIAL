@@ -1739,19 +1739,32 @@
 </script>
 
     /**
-     * Purges current gateway input states to prevent data bleed between modes.
-     */
-    function resetGateway() {
-        loginPhase = 'user';
+ * [PROTOCOL]: RESET_GATEWAY
+ * Purges current gateway input states to prevent data bleed between modes.
+ */
+function resetGateway() {
+    loginPhase = 'user'; // Reset to initial ID phase
+    
+    // Reset User Input Node
+    if (userInput) {
         userInput.disabled = false;
         userInput.value = "";
         userDisplay.innerText = "";
         userCursor.style.display = 'inline-block';
+    }
+    
+    // Reset Key/Email Input Node
+    if (keyInput) {
         keyInput.value = "";
         keyDisplay.innerText = "";
-        keyRow.style.display = 'none';
-        userInput.focus();
+        keyRow.style.display = 'none'; // Hide the second row
     }
+    
+    // Return focus to primary terminal
+    if (userInput) userInput.focus();
+    
+    console.log("[SYSTEM]: GATEWAY_STATE_SANITIZED");
+}
 
     /* -------------------------------------------------------------------------
        TERMINAL EVENT LISTENERS (TYPEWRITER SYNC)
