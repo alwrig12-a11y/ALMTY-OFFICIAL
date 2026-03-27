@@ -1701,30 +1701,22 @@
     /* --- THE REST OF YOUR FUNCTIONS BELOW --- */
 
     function toggleSignup() {
-        gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
-        resetGateway();
-        const statusDisplay = document.getElementById('status-display');
-        const userPrompt = document.getElementById('user-prompt');
-        const keyPrompt = document.getElementById('key-prompt');
+    gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
+    resetGateway();
+    
+    const statusDisplay = document.getElementById('status-display');
+    const userPrompt = document.getElementById('user-prompt');
 
-        if (gatewayMode === 'signup') {
-            statusDisplay.innerText = ">> STATUS: WAITLIST_ENROLLMENT_ACTIVE <<";
-            statusDisplay.style.color = "var(--socio-green)";
-            statusDisplay.style.borderColor = "var(--socio-green)";
-            userPrompt.innerText = "DESIRED_ID:";
-            keyPrompt.innerText = "COMM_LINK(EMAIL):";
-            keyInput.type = "text";
-            signupBtn.innerText = "JOIN_WAITLIST (REQUEST_ACCESS)";
-        } else {
-            statusDisplay.innerText = ">> STATUS: REQUISITION_PHASE_LOCKED <<";
-            statusDisplay.style.color = "var(--canary-yellow)";
-            statusDisplay.style.borderColor = "var(--canary-yellow)";
-            userPrompt.innerText = "PATRON_ID:";
-            keyPrompt.innerText = "CLEARANCE_KEY:";
-            keyInput.type = "password";
-            signupBtn.innerText = "JOIN_WAITLIST (REQUEST_ACCESS)";
-        }
+    if (gatewayMode === 'signup') {
+        signupPhase = 'id'; // Reset to first step
+        statusDisplay.innerText = ">> STATUS: WAITLIST_ENROLLMENT_ACTIVE <<";
+        statusDisplay.style.color = "var(--socio-green)";
+        userPrompt.innerText = "DESIRED_ID:";
+        signupBtn.innerText = "RETURN_TO_LOGIN";
+    } else {
+        // ... (Keep your existing login toggle logic here)
     }
+}
 
     /**
  * [PROTOCOL]: RESET_GATEWAY
@@ -1782,42 +1774,47 @@ function resetGateway() {
 
     // THE AUTHENTICATION GATE (Connecting to your real Backend)
     keyInput.addEventListener('keydown', async (e) => {
-        if (e.key === 'Enter') {
-            const username = userInput.value.toLowerCase().trim();
-            const password = keyInput.value.trim();
-            const statusDisplay = document.getElementById('status-display');
+    if (e.key === 'Enter') {
+        const statusDisplay = document.getElementById('status-display');
+        const keyPrompt = document.getElementById('key-prompt');
 
-            statusDisplay.innerText = ">> STATUS: VERIFYING_CREDENTIALS... <<";
+        if (gatewayMode === 'signup') {
+            // PHASE 1: EMAIL COMPLETED -> MOVE TO PASSKEY
+            if (signupPhase === 'id' || signupPhase === 'email') {
+                signupPhase = 'passkey';
+                keyPrompt.innerText = "SECURE_PASSKEY:";
+                keyInput.type = "password"; // Mask the passkey for security
+                keyInput.value = "";
+                keyDisplay.innerText = "";
+                statusDisplay.innerText = ">> STATUS: GENERATING_VAULT_CREDENTIALS... <<";
+            } 
+            // PHASE 2: PASSKEY COMPLETED -> FINAL SUBMISSION
+            else if (signupPhase === 'passkey') {
+                statusDisplay.innerText = ">> STATUS: SYNCING_TO_NODE_502... <<";
+                
+                // DATA CAPTURE
+                const entry = {
+                    username: userInput.value.trim(),
+                    email: keyInput.value.trim(), // Note: In a real build, you'd store both
+                    timestamp: new Date().toISOString()
+                };
 
-            try {
-                // THE ALMTY NODE ROUTER: Detects local vs production environment
-                const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                    ? 'http://localhost:5000'
-                    : 'https://almty-backend.onrender.com';
+                // Push to your local queue (or your Render backend)
+                waitlistQueue.push(entry);
+                localStorage.setItem('almty_waitlist', JSON.stringify(waitlistQueue));
 
-                const response = await fetch(`${API_URL}/api/users/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    isMasterOverseer = data.isAdmin;
-                    sessionStorage.setItem('almty_token', data.token);
-                    startLoadingSequence(data.name);
-                } else {
-                    statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-                    statusDisplay.style.color = "var(--alert-red)";
-                    statusDisplay.style.borderColor = "var(--alert-red)";
-                }
-            } catch (error) {
-                statusDisplay.innerText = ">> ERROR: NODE_OFFLINE_OR_UNREACHABLE <<";
-                statusDisplay.style.color = "var(--alert-red)";
+                setTimeout(() => {
+                    statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED_FOR_ACCESS <<";
+                    statusDisplay.style.color = "var(--socio-green)";
+                    resetGateway();
+                }, 1500);
             }
+        } 
+        else {
+            // ... (Keep your existing standard login logic here)
         }
-    });
+    }
+});
 
     /**
      * Simulates node decryption sequence.
