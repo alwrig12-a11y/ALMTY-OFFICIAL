@@ -1311,7 +1311,7 @@
             class="btn-signup" 
             id="signup-toggle" 
             onclick="toggleSignup()"
-        >
+        ></button>
             JOIN_WAITLIST (REQUEST_ACCESS)
         </button>
         
@@ -1713,8 +1713,9 @@
             statusDisplay.style.borderColor = "var(--socio-green)";
             userPrompt.innerText = "DESIRED_ID:";
             keyPrompt.innerText = "COMM_LINK(EMAIL):";
+            keyPrompt.innerText = "CLEARANCE_KEY:";
             keyInput.type = "text";
-            signupBtn.innerText = "RETURN_TO_LOGIN";
+            signupBtn.innerText = "CREATE_ACCOUNT";
         } else {
             statusDisplay.innerText = ">> STATUS: REQUISITION_PHASE_LOCKED <<";
             statusDisplay.style.color = "var(--canary-yellow)";
