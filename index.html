@@ -1403,10 +1403,13 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
 
         /** * Application State Variables 
          */
-        let loginPhase = 'user';
+        let loginPhase = 'user'; 
         let gatewayMode = 'login'; 
-        let selectedSize = null;
+        let signupPhase = 'id'; // Tracks: 'id' -> 'email' -> 'passkey'
+        let signupData = { username: '', email: '', password: '' };
         let isMasterOverseer = false;
+        // Temporary buffer to hold data between terminal phases
+        let signupBuffer = { username: '', email: '', password: '' };
         
         /** * Local Storage Hydration & Session State
          */
@@ -1708,7 +1711,8 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
     async function toggleSignup() {
     gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
     resetGateway();
-    
+    signupPhase = 'id'; // INITIALIZE THE PHASE
+
     const statusDisplay = document.getElementById('status-display');
     const userPrompt = document.getElementById('user-prompt');
 
@@ -1833,41 +1837,56 @@ function resetGateway() {
     if (e.key === 'Enter') {
         const statusDisplay = document.getElementById('status-display');
         const keyPrompt = document.getElementById('key-prompt');
+        const userPrompt = document.getElementById('user-prompt');
 
+        // --- MODE: WAITLIST ENROLLMENT ---
         if (gatewayMode === 'signup') {
-            // PHASE 1: EMAIL COMPLETED -> MOVE TO PASSKEY
             if (signupPhase === 'id' || signupPhase === 'email') {
+                // Phase Transition: Email to Passkey
+                signupData.username = userInput.value.toLowerCase().trim();
+                signupData.email = keyInput.value.trim();
+                
                 signupPhase = 'passkey';
-                keyPrompt.innerText = "SECURE_PASSKEY:";
-                keyInput.type = "password"; // Mask the passkey for security
+                keyPrompt.innerText = "SET_SECURE_PASSKEY:";
+                keyInput.type = "password"; // Secure the entry
                 keyInput.value = "";
                 keyDisplay.innerText = "";
-                statusDisplay.innerText = ">> STATUS: GENERATING_VAULT_CREDENTIALS... <<";
+                statusDisplay.innerText = ">> STATUS: SECURING_IDENTITY_PACKET... <<";
             } 
-            // PHASE 2: PASSKEY COMPLETED -> FINAL SUBMISSION
             else if (signupPhase === 'passkey') {
+                // Final Phase: Submit to Render
+                signupData.password = keyInput.value.trim();
                 statusDisplay.innerText = ">> STATUS: SYNCING_TO_NODE_502... <<";
-                
-                // DATA CAPTURE
-                const entry = {
-                    username: userInput.value.trim(),
-                    email: keyInput.value.trim(), // Note: In a real build, you'd store both
-                    timestamp: new Date().toISOString()
-                };
 
-                // Push to your local queue (or your Render backend)
-                waitlistQueue.push(entry);
-                localStorage.setItem('almty_waitlist', JSON.stringify(waitlistQueue));
+                try {
+                    const response = await fetch(`${API_URL}/api/users/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            username: signupData.username, 
+                            email: signupData.email,
+                            password: signupData.password, // This fixes the 500 Error
+                            role: 'SOCIO' 
+                        })
+                    });
 
-                setTimeout(() => {
-                    statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED_FOR_ACCESS <<";
-                    statusDisplay.style.color = "var(--socio-green)";
-                    resetGateway();
-                }, 1500);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        statusDisplay.innerText = ">> SUCCESS: IDENTITY_ESTABLISHED_IN_VAULT <<";
+                        statusDisplay.style.color = "var(--socio-green)";
+                        setTimeout(() => { toggleSignup(); }, 2000);
+                    } else {
+                        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+                    }
+                } catch (error) {
+                    statusDisplay.innerText = ">> ERROR: NODE_OFFLINE_OR_UNREACHABLE <<";
+                }
             }
         } 
+        // --- MODE: STANDARD LOGIN ---
         else {
-            // ... (Keep your existing standard login logic here)
+            // ... (Keep your existing login fetch logic here)
         }
     }
 });
