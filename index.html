@@ -1396,6 +1396,11 @@
         const keyCursor = document.getElementById('key-cursor');
         const signupBtn = document.getElementById('signup-toggle');
 
+// THE ALMTY NODE ROUTER
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000' 
+    : 'https://almty-backend.onrender.com'; // <--- Ensure this matches your Render Service name
+
         /** * Application State Variables 
          */
         let loginPhase = 'user';
@@ -1707,15 +1712,66 @@
     const statusDisplay = document.getElementById('status-display');
     const userPrompt = document.getElementById('user-prompt');
 
-    if (gatewayMode === 'signup') {
-        signupPhase = 'id'; // Reset to first step
-        statusDisplay.innerText = ">> STATUS: WAITLIST_ENROLLMENT_ACTIVE <<";
-        statusDisplay.style.color = "var(--socio-green)";
-        userPrompt.innerText = "DESIRED_ID:";
-        signupBtn.innerText = "RETURN_TO_LOGIN";
-    } else {
-        // ... (Keep your existing login toggle logic here)
+    // THE ENROLLMENT GATEWAY
+if (gatewayMode === 'signup') {
+    const username = userInput.value.toLowerCase().trim();
+    const contact = keyInput.value.trim(); // This is the Email/Comm_Link
+    const statusDisplay = document.getElementById('status-display');
+
+    statusDisplay.innerText = ">> STATUS: SYNCING_TO_NODE_502... <<";
+
+    try {
+        const response = await fetch(`${API_URL}/api/users/register`, { // Ensure this route exists on your backend
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: username, 
+                email: contact,
+                role: 'PATRON' // Default rank for new enrollees
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED_FOR_ACCESS <<";
+            statusDisplay.style.color = "var(--socio-green)";
+            
+            // Log locally for immediate feedback in the Master view
+            waitlistQueue.unshift({ id: username, contact: contact, timestamp: new Date().toISOString() });
+            localStorage.setItem('almty_waitlist', JSON.stringify(waitlistQueue));
+
+            setTimeout(() => {
+                resetGateway(); // Clears terminal for next use
+                toggleSignup(); // Returns to login mode
+            }, 2000);
+        } else {
+            statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+            statusDisplay.style.color = "var(--alert-red)";
+        }
+    } catch (error) {
+        statusDisplay.innerText = ">> ERROR: BACKEND_UNREACHABLE <<";
+        statusDisplay.style.color = "var(--alert-red)";
     }
+    return;
+}
+async function refreshMasterData() {
+    if (!isMasterOverseer) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/users/waitlist`, {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('almty_token')}` }
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            waitlistQueue = data; // Overwrite local mock data with real Render data
+            console.log("[SYSTEM]: LIVE_WAITLIST_SYNC_COMPLETE");
+        }
+    } catch (error) {
+        console.error("[ERROR]: FAILED_TO_FETCH_RENDER_DATA", error);
+    }
+}
 }
 
     /**
