@@ -1705,7 +1705,7 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
         }
     /* --- THE REST OF YOUR FUNCTIONS BELOW --- */
 
-    function toggleSignup() {
+    async function toggleSignup() {
     gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
     resetGateway();
     
@@ -1727,7 +1727,7 @@ if (gatewayMode === 'signup') {
             body: JSON.stringify({ 
                 username: username, 
                 email: contact,
-                role: 'PATRON' // Default rank for new enrollees
+                role: 'SOCIO' // Default rank for new enrollees
             })
         });
 
