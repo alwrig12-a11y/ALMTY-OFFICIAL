@@ -1431,7 +1431,7 @@
         let gatewayMode = 'login'; 
         let signupPhase = 'id'; // Tracks the 3 steps: 'id' -> 'email' -> 'passkey'
         let signupBuffer = { username: '', email: '', password: '' }; // Stores data between phases
-       
+        let signupData = { username: '', email: '', password: '' }; // The "Memory Buffer" for new Patrons
         /** * Local Storage Hydration & Session State
          */
         let stashStream = JSON.parse(localStorage.getItem('stashStream')) || [];
@@ -1939,48 +1939,48 @@ keyInput.addEventListener('keydown', async (e) => {
         } 
         // --- 02: LOGIN MODE (Overseer Access) ---
         else {
-            const username = userInput.value.toLowerCase().trim();
-            const password = keyInput.value.trim();
+    const username = userInput.value.toLowerCase().trim();
+    const password = keyInput.value.trim();
 
-            statusDisplay.innerText = ">> STATUS: VERIFYING_CLEARANCE... <<";
-            if (typeof startLoadingBar === "function") startLoadingBar();
+    statusDisplay.innerText = ">> STATUS: VERIFYING_CLEARANCE... <<";
+    startLoadingBar(); 
 
-          try {
-    const response = await fetch(`${API_URL}/api/users/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
+    try {
+        const response = await fetch(`${API_URL}/api/users/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
 
-    const data = await response.json();
-    finishLoadingBar(); // This now finds 'progress-fill' correctly
+        const data = await response.json();
+        finishLoadingBar(); 
 
-    if (response.ok) {
-        if (data.user.role === 'OVERSEER') {
-            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
-            statusDisplay.style.color = "var(--socio-green)";
-            sessionStorage.setItem('almty_token', data.token);
-            // Entrance logic...
+        if (response.ok) {
+            // Check if the user is an OVERSEER (All caps)
+            if (data.user.role === 'OVERSEER') {
+                statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
+                statusDisplay.style.color = "var(--socio-green)";
+                sessionStorage.setItem('almty_token', data.token);
+                
+                // REDIRECT LOGIC: Change "dashboard.html" to your actual internal filename
+                setTimeout(() => { 
+                    window.location.href = "dashboard.html"; 
+                }, 1500);
+            } 
+            else {
+                // If it's a regular Patron account
+                statusDisplay.innerText = ">> NOTICE: IDENTITY_QUEUED. SITE_UNDER_CONSTRUCTION. <<";
+                statusDisplay.style.color = "var(--canary-yellow)";
+            }
         } else {
-            statusDisplay.innerText = ">> NOTICE: IDENTITY_VERIFIED. SITE_UNDER_CONSTRUCTION. <<";
-            statusDisplay.style.color = "var(--canary-yellow)";
+            statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+            statusDisplay.style.color = "var(--alert-red)";
         }
-    } else {
-        // --- THIS FIXES THE UNKNOWN USER HANG ---
-        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-        statusDisplay.style.color = "var(--alert-red)";
-        
-        // Hide loading container if access is denied
-        setTimeout(() => {
-            const container = document.getElementById('loading-container');
-            if (container) container.style.display = 'none';
-        }, 2000);
+    } catch (error) {
+        finishLoadingBar();
+        statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_OFFLINE <<";
     }
-} catch (error) {
-    finishLoadingBar();
-    statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_OFFLINE <<";
 }
-        }
     }
 });
 
