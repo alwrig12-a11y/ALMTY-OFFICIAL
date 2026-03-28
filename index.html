@@ -1404,13 +1404,11 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
         /** * Application State Variables 
          */
         let loginPhase = 'user'; 
-        let gatewayMode = 'login'; 
-        let signupPhase = 'id'; // Tracks: 'id' -> 'email' -> 'passkey'
-        let signupData = { username: '', email: '', password: '' };
         let isMasterOverseer = false;
-        // Temporary buffer to hold data between terminal phases
-        let signupBuffer = { username: '', email: '', password: '' };
-        
+        let gatewayMode = 'login'; 
+        let signupPhase = 'id'; // Tracks the 3 steps: 'id' -> 'email' -> 'passkey'
+        let signupBuffer = { username: '', email: '', password: '' }; // Stores data between phases
+       
         /** * Local Storage Hydration & Session State
          */
         let stashStream = JSON.parse(localStorage.getItem('stashStream')) || [];
@@ -1708,57 +1706,31 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
         }
     /* --- THE REST OF YOUR FUNCTIONS BELOW --- */
 
-    async function toggleSignup() {
+async function toggleSignup() {
     gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
-    resetGateway();
-    signupPhase = 'id'; // INITIALIZE THE PHASE
-
+    resetGateway(); // Clears terminal boxes for fresh input
+    signupPhase = 'id'; // Initializes the sequence for the new account
+    
     const statusDisplay = document.getElementById('status-display');
     const userPrompt = document.getElementById('user-prompt');
+    const keyPrompt = document.getElementById('key-prompt');
 
-    // THE ENROLLMENT GATEWAY
-if (gatewayMode === 'signup') {
-    const username = userInput.value.toLowerCase().trim();
-    const contact = keyInput.value.trim(); // This is the Email/Comm_Link
-    const statusDisplay = document.getElementById('status-display');
-
-    statusDisplay.innerText = ">> STATUS: SYNCING_TO_NODE_502... <<";
-
-    try {
-        const response = await fetch(`${API_URL}/api/users/register`, { // Ensure this route exists on your backend
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                username: username, 
-                email: contact,
-                role: 'SOCIO' // Default rank for new enrollees
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED_FOR_ACCESS <<";
-            statusDisplay.style.color = "var(--socio-green)";
-            
-            // Log locally for immediate feedback in the Master view
-            waitlistQueue.unshift({ id: username, contact: contact, timestamp: new Date().toISOString() });
-            localStorage.setItem('almty_waitlist', JSON.stringify(waitlistQueue));
-
-            setTimeout(() => {
-                resetGateway(); // Clears terminal for next use
-                toggleSignup(); // Returns to login mode
-            }, 2000);
-        } else {
-            statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-            statusDisplay.style.color = "var(--alert-red)";
-        }
-    } catch (error) {
-        statusDisplay.innerText = ">> ERROR: BACKEND_UNREACHABLE <<";
-        statusDisplay.style.color = "var(--alert-red)";
+    if (gatewayMode === 'signup') {
+        statusDisplay.innerText = ">> STATUS: WAITLIST_ENROLLMENT_ACTIVE <<";
+        statusDisplay.style.color = "var(--socio-green)";
+        userPrompt.innerText = "DESIRED_ID:";
+        keyPrompt.innerText = "COMM_LINK(EMAIL):";
+        keyInput.type = "text"; 
+        signupBtn.innerText = "RETURN_TO_LOGIN";
+    } else {
+        statusDisplay.innerText = ">> STATUS: REQUISITION_PHASE_LOCKED <<";
+        statusDisplay.style.color = "var(--canary-yellow)";
+        userPrompt.innerText = "ALMTY_ID:";
+        keyPrompt.innerText = "CLEARANCE_KEY:";
+        keyInput.type = "password"; 
+        signupBtn.innerText = "JOIN_WAITLIST (REQUEST_ACCESS)";
     }
-    return;
-}
+}   
 async function refreshMasterData() {
     if (!isMasterOverseer) return;
 
@@ -1776,7 +1748,7 @@ async function refreshMasterData() {
         console.error("[ERROR]: FAILED_TO_FETCH_RENDER_DATA", error);
     }
 }
-}
+
 
     /**
  * [PROTOCOL]: RESET_GATEWAY
@@ -1837,25 +1809,30 @@ function resetGateway() {
     if (e.key === 'Enter') {
         const statusDisplay = document.getElementById('status-display');
         const keyPrompt = document.getElementById('key-prompt');
-        const userPrompt = document.getElementById('user-prompt');
 
-        // --- MODE: WAITLIST ENROLLMENT ---
+        // --- ENROLLMENT MODE: ID -> EMAIL -> PASSKEY ---
         if (gatewayMode === 'signup') {
-            if (signupPhase === 'id' || signupPhase === 'email') {
-                // Phase Transition: Email to Passkey
-                signupData.username = userInput.value.toLowerCase().trim();
-                signupData.email = keyInput.value.trim();
+            if (signupPhase === 'id') {
+                // Step 1: User just hit enter on the Email field
+                signupBuffer.username = userInput.value.toLowerCase().trim();
+                signupBuffer.email = keyInput.value.trim();
                 
+                if (!signupBuffer.username || !signupBuffer.email) {
+                    statusDisplay.innerText = ">> ERROR: REQUIRED_FIELDS_EMPTY <<";
+                    return;
+                }
+
+                // Transition to Passkey Phase
                 signupPhase = 'passkey';
-                keyPrompt.innerText = "SET_SECURE_PASSKEY:";
+                keyPrompt.innerText = "CREATE_SECURE_PASSKEY:";
                 keyInput.type = "password"; // Secure the entry
                 keyInput.value = "";
                 keyDisplay.innerText = "";
-                statusDisplay.innerText = ">> STATUS: SECURING_IDENTITY_PACKET... <<";
+                statusDisplay.innerText = ">> STATUS: SECURE_PASSKEY_REQUIRED <<";
             } 
             else if (signupPhase === 'passkey') {
-                // Final Phase: Submit to Render
-                signupData.password = keyInput.value.trim();
+                // Step 2: User just hit enter on the Passkey field
+                signupBuffer.password = keyInput.value.trim();
                 statusDisplay.innerText = ">> STATUS: SYNCING_TO_NODE_502... <<";
 
                 try {
@@ -1863,9 +1840,9 @@ function resetGateway() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
-                            username: signupData.username, 
-                            email: signupData.email,
-                            password: signupData.password, // This fixes the 500 Error
+                            username: signupBuffer.username, 
+                            email: signupBuffer.email,
+                            password: signupBuffer.password, // This fixes the 500 error
                             role: 'SOCIO' 
                         })
                     });
@@ -1875,18 +1852,18 @@ function resetGateway() {
                     if (response.ok) {
                         statusDisplay.innerText = ">> SUCCESS: IDENTITY_ESTABLISHED_IN_VAULT <<";
                         statusDisplay.style.color = "var(--socio-green)";
-                        setTimeout(() => { toggleSignup(); }, 2000);
+                        setTimeout(() => { toggleSignup(); }, 2000); // Return to login
                     } else {
                         statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
                     }
                 } catch (error) {
-                    statusDisplay.innerText = ">> ERROR: NODE_OFFLINE_OR_UNREACHABLE <<";
+                    statusDisplay.innerText = ">> ERROR: BACKEND_UNREACHABLE <<";
                 }
             }
         } 
-        // --- MODE: STANDARD LOGIN ---
+        // --- STANDARD LOGIN MODE ---
         else {
-            // ... (Keep your existing login fetch logic here)
+            // ... (Keep your existing standard login logic here)
         }
     }
 });
@@ -1894,7 +1871,7 @@ function resetGateway() {
     /**
      * Simulates node decryption sequence.
      */
-    function startLoadingSequence(patronId) {
+    function startLoadingSequence(almtyId) {
         document.getElementById('login-inputs-area').style.display = 'none';
         signupBtn.style.display = 'none';
         const loadingContainer = document.getElementById('loading-container');
@@ -1908,7 +1885,7 @@ function resetGateway() {
             if (progress >= 100) {
                 progress = 100;
                 clearInterval(interval);
-                executeEntry(patronId);
+                executeEntry(almtyId);
             }
             progressFill.style.width = progress + '%';
             percentText.innerText = `DECRYPTING_NODE_DATA: ${progress}%`;
@@ -1918,15 +1895,15 @@ function resetGateway() {
     /**
      * Executes the DOM swap to the Main Protocol Interface.
      */
-    function executeEntry(patronId) {
+    function executeEntry(almtyId) {
         sessionStorage.setItem('protocol_clearance', 'authorized');
-        sessionStorage.setItem('current_user', patronId);
+        sessionStorage.setItem('current_user', almtyId);
         if (isMasterOverseer) {
             sessionStorage.setItem('is_master', 'true');
         }
         document.getElementById('gateway-overlay').style.opacity = '0';
         setTimeout(() => {
-            const initial = (patronId && patronId.length > 0) ? patronId.charAt(0).toUpperCase() : 'A';
+            const initial = (almtyId && almtyId.length > 0) ? almtyId.charAt(0).toUpperCase() : 'A';
             document.getElementById('gateway-overlay').style.display = 'none';
             document.getElementById('main-site').style.display = 'flex';
             document.getElementById('user-initial').innerText = initial;
@@ -1955,11 +1932,11 @@ function resetGateway() {
         }
 
         if (sessionStorage.getItem('protocol_clearance') === 'authorized') {
-            const patronId = sessionStorage.getItem('current_user') || 'ALMTY';
+            const almtyId = sessionStorage.getItem('current_user') || 'ALMTY';
             isMasterOverseer = sessionStorage.getItem('is_master') === 'true';
             document.getElementById('gateway-overlay').style.display = 'none';
             document.getElementById('main-site').style.display = 'flex';
-            document.getElementById('user-initial').innerText = patronId.charAt(0).toUpperCase();
+            document.getElementById('user-initial').innerText = almtyId.charAt(0).toUpperCase();
 
             if (isMasterOverseer) {
                 setRank(5);
