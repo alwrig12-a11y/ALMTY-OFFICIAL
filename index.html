@@ -1408,6 +1408,11 @@
     </div>
 
     <script>
+        // THE ALMTY NODE ROUTER
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:5000' 
+        : 'https://almty-backend.onrender.com'; // <--- Ensure this matches your Render Service name
+
         /** * DOM Element References for the Authentication Gateway 
          */
         const userInput = document.getElementById('user-input');
@@ -1418,11 +1423,6 @@
         const keyDisplay = document.getElementById('key-display');
         const keyCursor = document.getElementById('key-cursor');
         const signupBtn = document.getElementById('signup-toggle');
-
-// THE ALMTY NODE ROUTER
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000' 
-    : 'https://almty-backend.onrender.com'; // <--- Ensure this matches your Render Service name
 
         /** * Application State Variables 
          */
@@ -1876,133 +1876,109 @@ function resetGateway() {
         }
     });
 
-    // THE AUTHENTICATION GATE (Connecting to your real Backend)
-    keyInput.addEventListener('keydown', async (e) => {
+    /**
+ * [PROTOCOL]: UNIFIED_GATEWAY_HANDSHAKE
+ * Handles both Waitlist Enrollment and Overseer Login
+ */
+keyInput.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
         const statusDisplay = document.getElementById('status-display');
         const keyPrompt = document.getElementById('key-prompt');
 
-        // --- ENROLLMENT MODE: ID -> EMAIL -> PASSKEY ---
+        // --- 01: SIGNUP MODE (Waitlist) ---
         if (gatewayMode === 'signup') {
             if (signupPhase === 'id') {
-                // Step 1: User just hit enter on the Email field
-                signupBuffer.username = userInput.value.toLowerCase().trim();
-                signupBuffer.email = keyInput.value.trim();
+                signupData.username = userInput.value.toLowerCase().trim();
+                signupData.email = keyInput.value.trim();
                 
-                if (!signupBuffer.username || !signupBuffer.email) {
-                    statusDisplay.innerText = ">> ERROR: REQUIRED_FIELDS_EMPTY <<";
+                if (!signupData.username || !signupData.email) {
+                    statusDisplay.innerText = ">> ERROR: DATA_REQUIRED <<";
                     return;
                 }
 
-                // Transition to Passkey Phase
                 signupPhase = 'passkey';
-                keyPrompt.innerText = "CREATE_SECURE_PASSKEY:";
-                keyInput.type = "password"; // Secure the entry
+                keyPrompt.innerText = "SET_SECURE_PASSKEY:";
+                keyInput.type = "password";
                 keyInput.value = "";
                 keyDisplay.innerText = "";
-                statusDisplay.innerText = ">> STATUS: SECURE_PASSKEY_REQUIRED <<";
+                statusDisplay.innerText = ">> STATUS: SECURING_IDENTITY_PACKET... <<";
             } 
             else if (signupPhase === 'passkey') {
-                // Step 2: User just hit enter on the Passkey field
-                signupBuffer.password = keyInput.value.trim();
-                statusDisplay.innerText = ">> STATUS: SYNCING_TO_NODE_502... <<";
+                signupData.password = keyInput.value.trim();
+                statusDisplay.innerText = ">> STATUS: SYNCING_TO_VAULT... <<";
+                
+                if (typeof startLoadingBar === "function") startLoadingBar();
 
                 try {
                     const response = await fetch(`${API_URL}/api/users/register`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
-                            username: signupBuffer.username, 
-                            email: signupBuffer.email,
-                            password: signupBuffer.password, // This fixes the 500 error
-                            role: 'SOCIO' 
+                            username: signupData.username, 
+                            email: signupData.email,
+                            password: signupData.password,
+                            role: 'PATRON' 
                         })
                     });
 
-                    const data = await response.json();
+                    if (typeof finishLoadingBar === "function") finishLoadingBar();
 
                     if (response.ok) {
-                        statusDisplay.innerText = ">> SUCCESS: IDENTITY_ESTABLISHED_IN_VAULT <<";
-                        statusDisplay.style.color = "var(--socio-green)";
-                        setTimeout(() => { toggleSignup(); }, 2000); // Return to login
+                        statusDisplay.innerText = ">> SUCCESS: QUEUED. SITE_UNDER_CONSTRUCTION. <<";
+                        statusDisplay.style.color = "var(--canary-yellow)";
+                        setTimeout(() => { toggleSignup(); }, 4000);
                     } else {
-                        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+                        const errData = await response.json();
+                        statusDisplay.innerText = `>> ERROR: ${errData.message.toUpperCase()} <<`;
                     }
-                } catch (error) {
-                    statusDisplay.innerText = ">> ERROR: BACKEND_UNREACHABLE <<";
+                } catch (err) {
+                    if (typeof finishLoadingBar === "function") finishLoadingBar();
+                    statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_FAILED <<";
                 }
             }
         } 
+        // --- 02: LOGIN MODE (Overseer Access) ---
+        else {
+            const username = userInput.value.toLowerCase().trim();
+            const password = keyInput.value.trim();
 
-            if (response.ok) {
-            finishLoadingBar();
-                statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED. SITE_UNDER_CONSTRUCTION. <<";
-                statusDisplay.style.color = "var(--canary-yellow)";
-    
-        // Optional: Log the fact that a waitlist entry happened
-            console.log(`[SYSTEM]: PATRON_${signupData.username}_QUEUED_FOR_V_0.1`);
+            statusDisplay.innerText = ">> STATUS: VERIFYING_CLEARANCE... <<";
+            if (typeof startLoadingBar === "function") startLoadingBar();
 
-        setTimeout(() => { toggleSignup(); }, 4000); // Give them longer to read the notice
-}
-       // --- MODE: STANDARD LOGIN (OVERSEER / PATRON) ---
-else {
-    const username = userInput.value.toLowerCase().trim();
-    const password = keyInput.value.trim();
-    const statusDisplay = document.getElementById('status-display');
+            try {
+                const response = await fetch(`${API_URL}/api/users/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
 
-    if (!username || !password) {
-        statusDisplay.innerText = ">> ERROR: CREDENTIALS_REQUIRED <<";
-        return;
-    }
+                const data = await response.json();
+                if (typeof finishLoadingBar === "function") finishLoadingBar();
 
-    statusDisplay.innerText = ">> STATUS: INITIATING_HANDSHAKE... <<";
-    
-    // SYNC THE LOADING BAR: Start progress
-    if (typeof startLoadingBar === "function") startLoadingBar(); 
-
-    try {
-        // DEFINING 'response' here makes it available for the logic below
-        const response = await fetch(`${API_URL}/api/users/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-
-        const data = await response.json();
-
-        // SYNC THE LOADING BAR: Finish now that data is received
-        if (typeof finishLoadingBar === "function") finishLoadingBar();
-
-        if (response.ok) {
-            // ROLE-BASED ACCESS CONTROL (RBAC)
-            // Consolidated to 'OVERSEER' to avoid confusion
-            if (data.user.role === 'OVERSEER') {
-                statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
-                statusDisplay.style.color = "var(--socio-green)";
-                sessionStorage.setItem('almty_token', data.token);
-                
-                // Trigger the entrance to your internal dashboard
-                setTimeout(() => { 
-                    console.log("[SYSTEM]: REDIRECTING_TO_OVERSEER_VAULT");
-                    // Enter your dashboard logic here
-                }, 1500);
-            } 
-            else {
-                // THE "QUEUED" PATRON MESSAGE
-                statusDisplay.innerText = ">> NOTICE: IDENTITY_VERIFIED. SITE_UNDER_CONSTRUCTION. <<";
-                statusDisplay.style.color = "var(--canary-yellow)";
+                if (response.ok) {
+                    if (data.user.role === 'OVERSEER') {
+                        statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
+                        statusDisplay.style.color = "var(--socio-green)";
+                        sessionStorage.setItem('almty_token', data.token);
+                        
+                        setTimeout(() => { 
+                             // Redirect logic
+                             console.log("[SYSTEM]: REDIRECTING_TO_INTERNAL_VAULT");
+                        }, 1500);
+                    } 
+                    else {
+                        statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION. ACCESS_PENDING. <<";
+                        statusDisplay.style.color = "var(--canary-yellow)";
+                    }
+                } else {
+                    statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+                    statusDisplay.style.color = "var(--alert-red)";
+                }
+            } catch (err) {
+                if (typeof finishLoadingBar === "function") finishLoadingBar();
+                statusDisplay.innerText = ">> ERROR: AUTH_SERVER_OFFLINE <<";
             }
-        } else {
-            statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-            statusDisplay.style.color = "var(--alert-red)";
         }
-    } catch (error) {
-        // Emergency cleanup if the Render handshake fails
-        if (typeof finishLoadingBar === "function") finishLoadingBar();
-        statusDisplay.innerText = ">> ERROR: BACKEND_UNREACHABLE <<";
-        console.error("[VAULT_ERROR]:", error);
-    }
-}
     }
 });
 
