@@ -177,7 +177,16 @@
             align-items: center; 
             position: relative; 
         }
+        #user-row 
+        {
+            position: relative;
+            z-index: 10; /* Ensures it sits above other background elements */
+        }
 
+        #user-display 
+        {
+            pointer-events: none; /* Allows your click to pass through the text to the row */
+        }
         .terminal-prompt 
         { 
             margin-right: 10px; 
@@ -1718,6 +1727,31 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
                 keyInput.focus();
             }
         }
+        /**
+        * [PROTOCOL]: RE_ENABLE_USER_PHASE
+        * Unlocks the ID field and hides the key/email row for correction.
+        */
+        function reEnableUserPhase() {
+        // 1. Reset Logic States to initial phase
+            loginPhase = 'user';
+            signupPhase = 'id';
+
+        // 2. Unlock the physical input field
+            userInput.disabled = false;
+
+        // 3. Force focus so typing works immediately
+            userInput.focus();
+
+        // 4. Restore the blinking cursor for visual feedback
+            userCursor.style.display = 'inline-block';
+
+        // 5. Hide and reset the second row (Email/Passkey)
+            keyRow.style.display = 'none';
+            keyInput.value = "";
+            keyDisplay.innerText = "";
+
+            console.log("[SYSTEM]: ID_PHASE_RE_ENABLED_FOR_CORRECTION");
+}
     /* --- THE REST OF YOUR FUNCTIONS BELOW --- */
 
 async function toggleSignup() {
