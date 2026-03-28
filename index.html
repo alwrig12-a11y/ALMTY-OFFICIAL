@@ -1944,15 +1944,24 @@ function resetGateway() {
 
     setTimeout(() => { toggleSignup(); }, 4000); // Give them longer to read the notice
 }
-       // --- MODE: STANDARD LOGIN (OVERSEER/DEMO) ---
+       // --- MODE: STANDARD LOGIN (OVERSEER/DEMO/PATRON) ---
 else {
     const username = userInput.value.toLowerCase().trim();
     const password = keyInput.value.trim();
+    const statusDisplay = document.getElementById('status-display');
 
-    statusDisplay.innerText = ">> STATUS: VERIFYING_CREDENTIALS... <<";
-    startLoadingBar(); // Trigger your existing bar
+    if (!username || !password) {
+        statusDisplay.innerText = ">> ERROR: CREDENTIALS_REQUIRED <<";
+        return;
+    }
+
+    statusDisplay.innerText = ">> STATUS: INITIATING_HANDSHAKE... <<";
+    
+    // SYNC THE LOADING BAR: Start it now
+    if (typeof startLoadingBar === "function") startLoadingBar(); 
 
     try {
+        // We define 'response' here so it is available for the checks below
         const response = await fetch(`${API_URL}/api/users/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1961,25 +1970,37 @@ else {
 
         const data = await response.json();
 
+        // SYNC THE LOADING BAR: Finish it now that data is back
+        if (typeof finishLoadingBar === "function") finishLoadingBar();
+
         if (response.ok) {
-            finishLoadingBar(); // Snap the bar to 100%
-            
-            // Check for Overseer/Admin Status
+            // ROLE-BASED ACCESS CONTROL (RBAC)
             if (data.user.role === 'OVERSEER' || data.user.role === 'ADMIN') {
-                statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME OVERSEER <<";
+                statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
+                statusDisplay.style.color = "var(--socio-green)";
                 sessionStorage.setItem('almty_token', data.token);
-                setTimeout(() => { enterInternalVault(data.user); }, 1500);
-            } else {
-                // PROBLEM 3 FIX: Message for Patrons/Waitlist
-                statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION. ACCESS_PENDING. <<";
+                
+                // Transition to internal site
+                setTimeout(() => { 
+                    window.location.href = "/dashboard"; // Or your internal function
+                }, 1500);
+            } 
+            else {
+                // THE "QUEUED" PATRON MESSAGE (Fix for Problem 3)
+                statusDisplay.innerText = ">> NOTICE: IDENTITY_VERIFIED. SITE_UNDER_CONSTRUCTION. <<";
                 statusDisplay.style.color = "var(--canary-yellow)";
+                
+                // Log the attempt for Master records
+                console.log(`[SYSTEM]: PATRON_${username}_ACCESS_DENIED_WAITLIST_ACTIVE`);
             }
         } else {
             statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
             statusDisplay.style.color = "var(--alert-red)";
         }
     } catch (error) {
-        statusDisplay.innerText = ">> ERROR: AUTH_SERVER_UNREACHABLE <<";
+        if (typeof finishLoadingBar === "function") finishLoadingBar();
+        statusDisplay.innerText = ">> ERROR: BACKEND_UNREACHABLE <<";
+        console.error("[VAULT_ERROR]:", error);
     }
 }
     }
@@ -2013,16 +2034,18 @@ else {
 
 function startLoadingBar() {
     const bar = document.getElementById('loading-bar-fill'); // Ensure this ID matches your CSS
+    if (!bar) return;
+    
     let width = 0;
     bar.style.width = '0%';
     
     // Simulate progress up to 90%
     loadingInterval = setInterval(() => {
         if (width < 90) {
-            width += Math.random() * 10; // Random increments feel more "live"
+            width += Math.random() * 15; // Random increments feel more "live"
             bar.style.width = width + '%';
         }
-    }, 200);
+    }, 150);
 }
 
 function finishLoadingBar() {
