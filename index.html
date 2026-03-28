@@ -1945,39 +1945,39 @@ keyInput.addEventListener('keydown', async (e) => {
             statusDisplay.innerText = ">> STATUS: VERIFYING_CLEARANCE... <<";
             if (typeof startLoadingBar === "function") startLoadingBar();
 
-            try {
-                const response = await fetch(`${API_URL}/api/users/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
+          try {
+    const response = await fetch(`${API_URL}/api/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
 
-                const data = await response.json();
-                if (typeof finishLoadingBar === "function") finishLoadingBar();
+    const data = await response.json();
+    finishLoadingBar(); // This is now safe from crashing
 
-                if (response.ok) {
-                    if (data.user.role === 'OVERSEER') {
-                        statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
-                        statusDisplay.style.color = "var(--socio-green)";
-                        sessionStorage.setItem('almty_token', data.token);
-                        
-                        setTimeout(() => { 
-                             // Redirect logic
-                             console.log("[SYSTEM]: REDIRECTING_TO_INTERNAL_VAULT");
-                        }, 1500);
-                    } 
-                    else {
-                        statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION. ACCESS_PENDING. <<";
-                        statusDisplay.style.color = "var(--canary-yellow)";
-                    }
-                } else {
-                    statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-                    statusDisplay.style.color = "var(--alert-red)";
-                }
-            } catch (err) {
-                if (typeof finishLoadingBar === "function") finishLoadingBar();
-                statusDisplay.innerText = ">> ERROR: AUTH_SERVER_OFFLINE <<";
-            }
+    if (response.ok) {
+        if (data.user.role === 'OVERSEER') {
+            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
+            statusDisplay.style.color = "var(--socio-green)";
+            sessionStorage.setItem('almty_token', data.token);
+            setTimeout(() => { /* enter dashboard */ }, 1500);
+        } else {
+            statusDisplay.innerText = ">> NOTICE: IDENTITY_QUEUED. WAITLIST_ACTIVE. <<";
+            statusDisplay.style.color = "var(--canary-yellow)";
+        }
+    } else {
+        // THIS FIXES THE UNKNOWN NAME ISSUE
+        // If the database says 'User not found', it shows here:
+        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+        statusDisplay.style.color = "var(--alert-red)";
+        
+        // Reset the inputs so they can try again
+        setTimeout(() => { resetGateway(); }, 2000);
+    }
+} catch (error) {
+    finishLoadingBar();
+    statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_LOST <<";
+}  
         }
     }
 });
@@ -2024,10 +2024,16 @@ function startLoadingBar() {
     }, 150);
 }
 
-function finishLoadingBar() {
+    function finishLoadingBar() {
     clearInterval(loadingInterval);
-    const bar = document.getElementById('loading-bar-fill');
-    bar.style.width = '100%'; // Snap to finish immediately upon handshake success
+    // Use the ID that is actually in your HTML (likely 'progress-fill')
+    const bar = document.getElementById('progress-fill') || document.getElementById('loading-bar-fill'); 
+    
+    if (bar) {
+        bar.style.width = '100%';
+    } else {
+        console.warn("[SYSTEM_ADVISORY]: LOADING_BAR_ELEMENT_NOT_FOUND");
+    }
 }
     /**
      * Executes the DOM swap to the Main Protocol Interface.
