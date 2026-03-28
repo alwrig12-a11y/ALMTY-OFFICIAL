@@ -1934,17 +1934,17 @@ function resetGateway() {
             }
         } 
 
-                    if (response.ok) {
-    finishLoadingBar();
-    statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED. SITE_UNDER_CONSTRUCTION. <<";
-    statusDisplay.style.color = "var(--canary-yellow)";
+            if (response.ok) {
+            finishLoadingBar();
+                statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED. SITE_UNDER_CONSTRUCTION. <<";
+                statusDisplay.style.color = "var(--canary-yellow)";
     
-    // Optional: Log the fact that a waitlist entry happened
-    console.log(`[SYSTEM]: PATRON_${signupData.username}_QUEUED_FOR_V_0.1`);
+        // Optional: Log the fact that a waitlist entry happened
+            console.log(`[SYSTEM]: PATRON_${signupData.username}_QUEUED_FOR_V_0.1`);
 
-    setTimeout(() => { toggleSignup(); }, 4000); // Give them longer to read the notice
+        setTimeout(() => { toggleSignup(); }, 4000); // Give them longer to read the notice
 }
-       // --- MODE: STANDARD LOGIN (OVERSEER/DEMO/PATRON) ---
+       // --- MODE: STANDARD LOGIN (OVERSEER / PATRON) ---
 else {
     const username = userInput.value.toLowerCase().trim();
     const password = keyInput.value.trim();
@@ -1957,11 +1957,11 @@ else {
 
     statusDisplay.innerText = ">> STATUS: INITIATING_HANDSHAKE... <<";
     
-    // SYNC THE LOADING BAR: Start it now
+    // SYNC THE LOADING BAR: Start progress
     if (typeof startLoadingBar === "function") startLoadingBar(); 
 
     try {
-        // We define 'response' here so it is available for the checks below
+        // DEFINING 'response' here makes it available for the logic below
         const response = await fetch(`${API_URL}/api/users/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1970,34 +1970,34 @@ else {
 
         const data = await response.json();
 
-        // SYNC THE LOADING BAR: Finish it now that data is back
+        // SYNC THE LOADING BAR: Finish now that data is received
         if (typeof finishLoadingBar === "function") finishLoadingBar();
 
         if (response.ok) {
             // ROLE-BASED ACCESS CONTROL (RBAC)
-            if (data.user.role === 'OVERSEER' || data.user.role === 'ADMIN') {
+            // Consolidated to 'OVERSEER' to avoid confusion
+            if (data.user.role === 'OVERSEER') {
                 statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
                 statusDisplay.style.color = "var(--socio-green)";
                 sessionStorage.setItem('almty_token', data.token);
                 
-                // Transition to internal site
+                // Trigger the entrance to your internal dashboard
                 setTimeout(() => { 
-                    window.location.href = "/dashboard"; // Or your internal function
+                    console.log("[SYSTEM]: REDIRECTING_TO_OVERSEER_VAULT");
+                    // Enter your dashboard logic here
                 }, 1500);
             } 
             else {
-                // THE "QUEUED" PATRON MESSAGE (Fix for Problem 3)
+                // THE "QUEUED" PATRON MESSAGE
                 statusDisplay.innerText = ">> NOTICE: IDENTITY_VERIFIED. SITE_UNDER_CONSTRUCTION. <<";
                 statusDisplay.style.color = "var(--canary-yellow)";
-                
-                // Log the attempt for Master records
-                console.log(`[SYSTEM]: PATRON_${username}_ACCESS_DENIED_WAITLIST_ACTIVE`);
             }
         } else {
             statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
             statusDisplay.style.color = "var(--alert-red)";
         }
     } catch (error) {
+        // Emergency cleanup if the Render handshake fails
         if (typeof finishLoadingBar === "function") finishLoadingBar();
         statusDisplay.innerText = ">> ERROR: BACKEND_UNREACHABLE <<";
         console.error("[VAULT_ERROR]:", error);
