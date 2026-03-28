@@ -137,7 +137,17 @@
                 transform: rotateY(360deg); 
             } 
         }
+        #user-row 
+        {
+            transition: background 0.3s ease;
+            padding: 5px;
+            border-radius: 4px;
+        }
 
+        #user-row:hover 
+        {
+            background: rgba(0, 255, 0, 0.05); /* Subtle green glow on hover */
+        }
         .terminal-box 
         { 
             width: 100%; 
@@ -1269,7 +1279,7 @@
             </div>
             
             <div id="login-inputs-area">
-                <div class="login-row" id="user-row">
+                <div class="login-row" id="user-row" onclick="reEnableUserPhase()" style="cursor: text;">
                     <span class="terminal-prompt" id="user-prompt">ALMTY_ID:</span>
                     <div class="input-wrapper">
                         <span id="user-display" class="display-text"></span>
@@ -1753,7 +1763,31 @@ async function refreshMasterData() {
     }
 }
 
-
+/**
+ * [PROTOCOL]: RE_ENABLE_USER_PHASE
+ * Unlocks the ID field and hides the key/email row for correction.
+ */
+function reEnableUserPhase() {
+    // Only trigger if the user has already moved past the ID phase
+    if (loginPhase === 'key' || (gatewayMode === 'signup' && signupPhase !== 'id')) {
+        
+        // Reset Logic States
+        loginPhase = 'user';
+        signupPhase = 'id';
+        
+        // Re-enable Input Node
+        userInput.disabled = false;
+        userInput.focus();
+        userCursor.style.display = 'inline-block';
+        
+        // Hide and Purge Secondary Row
+        keyRow.style.display = 'none';
+        keyInput.value = "";
+        keyDisplay.innerText = "";
+        
+        console.log("[SYSTEM]: ID_PHASE_RE_ENABLED_FOR_EDIT");
+    }
+}
     /**
  * [PROTOCOL]: RESET_GATEWAY
  * Purges current gateway input states to prevent data bleed between modes.
