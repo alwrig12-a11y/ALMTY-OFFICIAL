@@ -1953,31 +1953,33 @@ keyInput.addEventListener('keydown', async (e) => {
     });
 
     const data = await response.json();
-    finishLoadingBar(); // This is now safe from crashing
+    finishLoadingBar(); // This now finds 'progress-fill' correctly
 
     if (response.ok) {
         if (data.user.role === 'OVERSEER') {
             statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
             statusDisplay.style.color = "var(--socio-green)";
             sessionStorage.setItem('almty_token', data.token);
-            setTimeout(() => { /* enter dashboard */ }, 1500);
+            // Entrance logic...
         } else {
-            statusDisplay.innerText = ">> NOTICE: IDENTITY_QUEUED. WAITLIST_ACTIVE. <<";
+            statusDisplay.innerText = ">> NOTICE: IDENTITY_VERIFIED. SITE_UNDER_CONSTRUCTION. <<";
             statusDisplay.style.color = "var(--canary-yellow)";
         }
     } else {
-        // THIS FIXES THE UNKNOWN NAME ISSUE
-        // If the database says 'User not found', it shows here:
+        // --- THIS FIXES THE UNKNOWN USER HANG ---
         statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
         statusDisplay.style.color = "var(--alert-red)";
         
-        // Reset the inputs so they can try again
-        setTimeout(() => { resetGateway(); }, 2000);
+        // Hide loading container if access is denied
+        setTimeout(() => {
+            const container = document.getElementById('loading-container');
+            if (container) container.style.display = 'none';
+        }, 2000);
     }
 } catch (error) {
     finishLoadingBar();
-    statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_LOST <<";
-}  
+    statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_OFFLINE <<";
+}
         }
     }
 });
@@ -2009,31 +2011,33 @@ keyInput.addEventListener('keydown', async (e) => {
     let loadingInterval;
 
 function startLoadingBar() {
-    const bar = document.getElementById('loading-bar-fill'); // Ensure this ID matches your CSS
-    if (!bar) return;
-    
+    const bar = document.getElementById('progress-fill');
+    const percentText = document.getElementById('loading-percent');
+    const container = document.getElementById('loading-container');
+
+    if (!bar || !container) return;
+
+    container.style.display = 'block'; // Ensure the vault is visible
     let width = 0;
     bar.style.width = '0%';
     
-    // Simulate progress up to 90%
+    clearInterval(loadingInterval);
     loadingInterval = setInterval(() => {
-        if (width < 90) {
-            width += Math.random() * 15; // Random increments feel more "live"
+        if (width < 92) {
+            width += Math.random() * 8; // Jittery logic feels like real-time decryption
             bar.style.width = width + '%';
+            if (percentText) percentText.innerText = `DECRYPTING_NODE_DATA: ${Math.floor(width)}%`;
         }
     }, 150);
 }
 
-    function finishLoadingBar() {
+function finishLoadingBar() {
     clearInterval(loadingInterval);
-    // Use the ID that is actually in your HTML (likely 'progress-fill')
-    const bar = document.getElementById('progress-fill') || document.getElementById('loading-bar-fill'); 
-    
-    if (bar) {
-        bar.style.width = '100%';
-    } else {
-        console.warn("[SYSTEM_ADVISORY]: LOADING_BAR_ELEMENT_NOT_FOUND");
-    }
+    const bar = document.getElementById('progress-fill');
+    const percentText = document.getElementById('loading-percent');
+
+    if (bar) bar.style.width = '100%';
+    if (percentText) percentText.innerText = "DECRYPTING_NODE_DATA: 100% (COMPLETE)";
 }
     /**
      * Executes the DOM swap to the Main Protocol Interface.
