@@ -1933,10 +1933,55 @@ function resetGateway() {
                 }
             }
         } 
-        // --- STANDARD LOGIN MODE ---
-        else {
-            // ... (Keep your existing standard login logic here)
+
+                    if (response.ok) {
+    finishLoadingBar();
+    statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED. SITE_UNDER_CONSTRUCTION. <<";
+    statusDisplay.style.color = "var(--canary-yellow)";
+    
+    // Optional: Log the fact that a waitlist entry happened
+    console.log(`[SYSTEM]: PATRON_${signupData.username}_QUEUED_FOR_V_0.1`);
+
+    setTimeout(() => { toggleSignup(); }, 4000); // Give them longer to read the notice
+}
+       // --- MODE: STANDARD LOGIN (OVERSEER/DEMO) ---
+else {
+    const username = userInput.value.toLowerCase().trim();
+    const password = keyInput.value.trim();
+
+    statusDisplay.innerText = ">> STATUS: VERIFYING_CREDENTIALS... <<";
+    startLoadingBar(); // Trigger your existing bar
+
+    try {
+        const response = await fetch(`${API_URL}/api/users/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            finishLoadingBar(); // Snap the bar to 100%
+            
+            // Check for Overseer/Admin Status
+            if (data.user.role === 'OVERSEER' || data.user.role === 'ADMIN') {
+                statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME OVERSEER <<";
+                sessionStorage.setItem('almty_token', data.token);
+                setTimeout(() => { enterInternalVault(data.user); }, 1500);
+            } else {
+                // PROBLEM 3 FIX: Message for Patrons/Waitlist
+                statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION. ACCESS_PENDING. <<";
+                statusDisplay.style.color = "var(--canary-yellow)";
+            }
+        } else {
+            statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+            statusDisplay.style.color = "var(--alert-red)";
         }
+    } catch (error) {
+        statusDisplay.innerText = ">> ERROR: AUTH_SERVER_UNREACHABLE <<";
+    }
+}
     }
 });
 
@@ -1964,6 +2009,27 @@ function resetGateway() {
         }, 80);
     }
 
+    let loadingInterval;
+
+function startLoadingBar() {
+    const bar = document.getElementById('loading-bar-fill'); // Ensure this ID matches your CSS
+    let width = 0;
+    bar.style.width = '0%';
+    
+    // Simulate progress up to 90%
+    loadingInterval = setInterval(() => {
+        if (width < 90) {
+            width += Math.random() * 10; // Random increments feel more "live"
+            bar.style.width = width + '%';
+        }
+    }, 200);
+}
+
+function finishLoadingBar() {
+    clearInterval(loadingInterval);
+    const bar = document.getElementById('loading-bar-fill');
+    bar.style.width = '100%'; // Snap to finish immediately upon handshake success
+}
     /**
      * Executes the DOM swap to the Main Protocol Interface.
      */
@@ -1987,7 +2053,7 @@ function resetGateway() {
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) simHub.style.display = 'none';
             } else {
-                setRank(4); 
+                setRank(1); 
                 updateSidebar();
                 loadPage('manifesto');
             }
