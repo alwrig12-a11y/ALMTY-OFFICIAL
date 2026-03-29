@@ -1884,103 +1884,75 @@ keyInput.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
         const statusDisplay = document.getElementById('status-display');
         const keyPrompt = document.getElementById('key-prompt');
+        
+        // Ensure API_URL is accessible here
+        if (typeof API_URL === 'undefined') {
+            statusDisplay.innerText = ">> ERROR: CONFIG_MISSING <<";
+            return;
+        }
 
-        // --- 01: SIGNUP MODE (Waitlist) ---
         if (gatewayMode === 'signup') {
-            if (signupPhase === 'id') {
-                signupData.username = userInput.value.toLowerCase().trim();
-                signupData.email = keyInput.value.trim();
-                
-                if (!signupData.username || !signupData.email) {
-                    statusDisplay.innerText = ">> ERROR: DATA_REQUIRED <<";
-                    return;
-                }
-
-                signupPhase = 'passkey';
-                keyPrompt.innerText = "SET_SECURE_PASSKEY:";
-                keyInput.type = "password";
-                keyInput.value = "";
-                keyDisplay.innerText = "";
-                statusDisplay.innerText = ">> STATUS: SECURING_IDENTITY_PACKET... <<";
-            } 
-            else if (signupPhase === 'passkey') {
+            // ... (Keep your signupPhase 'id' logic here)
+            if (signupPhase === 'passkey') {
                 signupData.password = keyInput.value.trim();
-                statusDisplay.innerText = ">> STATUS: SYNCING_TO_VAULT... <<";
-                
-                if (typeof startLoadingBar === "function") startLoadingBar();
+                statusDisplay.innerText = ">> STATUS: WAKING_NODE_502... (STAND BY) <<";
+                startLoadingBar();
 
                 try {
                     const response = await fetch(`${API_URL}/api/users/register`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            username: signupData.username, 
-                            email: signupData.email,
-                            password: signupData.password,
-                            role: 'PATRON' 
-                        })
+                        body: JSON.stringify(signupData)
                     });
-
-                    if (typeof finishLoadingBar === "function") finishLoadingBar();
+                    const data = await response.json();
 
                     if (response.ok) {
-                        statusDisplay.innerText = ">> SUCCESS: QUEUED. SITE_UNDER_CONSTRUCTION. <<";
-                        statusDisplay.style.color = "var(--canary-yellow)";
-                        setTimeout(() => { toggleSignup(); }, 4000);
+                        statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED <<";
+                        setTimeout(() => toggleSignup(), 3000);
                     } else {
-                        const errData = await response.json();
-                        statusDisplay.innerText = `>> ERROR: ${errData.message.toUpperCase()} <<`;
+                        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
                     }
                 } catch (err) {
-                    if (typeof finishLoadingBar === "function") finishLoadingBar();
-                    statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_FAILED <<";
+                    statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (COLD_START) <<";
+                } finally {
+                    finishLoadingBar(); // ALWAYS closes the bar
                 }
             }
-        } 
-        // --- 02: LOGIN MODE (Overseer Access) ---
-        else {
-    const username = userInput.value.toLowerCase().trim();
-    const password = keyInput.value.trim();
-
-    statusDisplay.innerText = ">> STATUS: VERIFYING_CLEARANCE... <<";
-    startLoadingBar(); 
-
-    try {
-        const response = await fetch(`${API_URL}/api/users/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-
-        const data = await response.json();
-        finishLoadingBar(); 
-
-        if (response.ok) {
-            // Check if the user is an OVERSEER (All caps)
-            if (data.user.role === 'OVERSEER') {
-                statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
-                statusDisplay.style.color = "var(--socio-green)";
-                sessionStorage.setItem('almty_token', data.token);
-                
-                // REDIRECT LOGIC: Change "dashboard.html" to your actual internal filename
-                setTimeout(() => { 
-                    window.location.href = "dashboard.html"; 
-                }, 1500);
-            } 
-            else {
-                // If it's a regular Patron account
-                statusDisplay.innerText = ">> NOTICE: IDENTITY_QUEUED. SITE_UNDER_CONSTRUCTION. <<";
-                statusDisplay.style.color = "var(--canary-yellow)";
-            }
         } else {
-            statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-            statusDisplay.style.color = "var(--alert-red)";
+            // --- LOGIN MODE ---
+            const username = userInput.value.toLowerCase().trim();
+            const password = keyInput.value.trim();
+
+            statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
+            startLoadingBar();
+
+            try {
+                const response = await fetch(`${API_URL}/api/users/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data.user.role === 'OVERSEER') {
+                        statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
+                        sessionStorage.setItem('almty_token', data.token);
+                        setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
+                    } else {
+                        statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION <<";
+                    }
+                } else {
+                    // This shows the actual error (e.g., "Invalid Credentials")
+                    statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+                }
+            } catch (err) {
+                statusDisplay.innerText = ">> ERROR: VAULT_TIMEOUT (RETRY_IN_30S) <<";
+            } finally {
+                finishLoadingBar(); // ALWAYS closes the bar
+            }
         }
-    } catch (error) {
-        finishLoadingBar();
-        statusDisplay.innerText = ">> ERROR: VAULT_CONNECTION_OFFLINE <<";
-    }
-}
     }
 });
 
