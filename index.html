@@ -1936,16 +1936,23 @@ keyInput.addEventListener('keydown', async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-        if (data.user.role === 'OVERSEER') {
-            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
-            sessionStorage.setItem('almty_token', data.token);
-            setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
-        } else {
-            statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION <<";
-        }
-    } else {
-        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+    // SECURITY CHECK: Ensure 'data.user' actually exists before checking 'role'
+    if (data.user && data.user.role === 'OVERSEER') {
+        statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
+        statusDisplay.style.color = "var(--socio-green)";
+        sessionStorage.setItem('almty_token', data.token);
+        setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
+    } 
+    else if (data.user) {
+        // Known user, but just a Patron
+        statusDisplay.innerText = ">> NOTICE: IDENTITY_VERIFIED. SITE_UNDER_CONSTRUCTION. <<";
+        statusDisplay.style.color = "var(--canary-yellow)";
     }
+} else {
+    // If response is NOT ok (Wrong password/User not found)
+    statusDisplay.innerText = `>> ERROR: ${data.message ? data.message.toUpperCase() : 'AUTH_FAILED'} <<`;
+    statusDisplay.style.color = "var(--alert-red)";
+}
 } catch (error) {
     statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
     console.error("Connection Error:", error);
@@ -2006,19 +2013,21 @@ function startLoadingBar() {
 
 function finishLoadingBar() {
     clearInterval(loadingInterval);
+    // REDEFINE THESE HERE TO BE SAFE
     const bar = document.getElementById('progress-fill');
     const percentText = document.getElementById('loading-percent');
+    const container = document.getElementById('loading-container'); 
 
     if (bar) bar.style.width = '100%';
     if (percentText) percentText.innerText = "DECRYPTING_NODE_DATA: 100% (COMPLETE)";
 
-    // This is the part that actually makes it "go away"
     setTimeout(() => {
+        // Use the container we just defined above
         if (container) {
             container.style.display = 'none'; 
-            console.log("[SYSTEM]: LOADING_CONTAINER_HIDDEN");
-}
-    }, 500); // Small delay so you see the 100% before it vanishes
+            console.log("[SYSTEM]: INTERFACE_CLEARED");
+        }
+    }, 800); 
 }
     /**
      * Executes the DOM swap to the Main Protocol Interface.
