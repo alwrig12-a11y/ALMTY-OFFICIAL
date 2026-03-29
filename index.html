@@ -1923,35 +1923,36 @@ keyInput.addEventListener('keydown', async (e) => {
             const username = userInput.value.toLowerCase().trim();
             const password = keyInput.value.trim();
 
-            statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
-            startLoadingBar();
+          try {
+    startLoadingBar();
+    statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
 
-            try {
-                const response = await fetch(`${API_URL}/api/users/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
+    const response = await fetch(`${API_URL}/api/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
 
-                const data = await response.json();
+    const data = await response.json();
 
-                if (response.ok) {
-                    if (data.user.role === 'OVERSEER') {
-                        statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
-                        sessionStorage.setItem('almty_token', data.token);
-                        setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
-                    } else {
-                        statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION <<";
-                    }
-                } else {
-                    // This shows the actual error (e.g., "Invalid Credentials")
-                    statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-                }
-            } catch (err) {
-                statusDisplay.innerText = ">> ERROR: VAULT_TIMEOUT (RETRY_IN_30S) <<";
-            } finally {
-                finishLoadingBar(); // ALWAYS closes the bar
-            }
+    if (response.ok) {
+        if (data.user.role === 'OVERSEER') {
+            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
+            sessionStorage.setItem('almty_token', data.token);
+            setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
+        } else {
+            statusDisplay.innerText = ">> NOTICE: SITE_UNDER_CONSTRUCTION <<";
+        }
+    } else {
+        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+    }
+} catch (error) {
+    statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
+    console.error("Connection Error:", error);
+} finally {
+    // THIS ENSURES THE BAR GOES AWAY NO MATTER WHAT
+    finishLoadingBar(); 
+}  
         }
     }
 });
@@ -2010,6 +2011,14 @@ function finishLoadingBar() {
 
     if (bar) bar.style.width = '100%';
     if (percentText) percentText.innerText = "DECRYPTING_NODE_DATA: 100% (COMPLETE)";
+
+    // This is the part that actually makes it "go away"
+    setTimeout(() => {
+        if (container) {
+            container.style.display = 'none'; 
+            console.log("[SYSTEM]: LOADING_CONTAINER_HIDDEN");
+}
+    }, 500); // Small delay so you see the 100% before it vanishes
 }
     /**
      * Executes the DOM swap to the Main Protocol Interface.
