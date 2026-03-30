@@ -1892,23 +1892,34 @@ keyInput.addEventListener('keydown', async (e) => {
 
         // --- MODE: SIGNUP (Ghost Evolution) ---
         if (gatewayMode === 'signup') {
-            if (signupPhase === 'id') {
-                signupData.username = userInput.value.toLowerCase().trim();
-                signupData.email = keyInput.value.trim();
-                
-                if (!signupData.username || !signupData.email) {
-                    statusDisplay.innerText = ">> ERROR: ID_AND_COMM_LINK_REQUIRED <<";
-                    return;
-                }
+            // --- PHASE 1: ID & EMAIL ENTRY (The Transition) ---
+        if (signupPhase === 'id') {
+        // 1. Capture the data
+            signupData.username = userInput.value.toLowerCase().trim();
+            signupData.email = keyInput.value.trim();
+    
+        // 2. Validation Check
+        if (!signupData.username || !signupData.email) {
+            statusDisplay.innerText = ">> ERROR: ID_AND_COMM_LINK_REQUIRED <<";
+            return;
+        }
 
-                console.log("[SYSTEM]: ID_ACCEPTED. TRANSITIONING_TO_PASSKEY...");
-                signupPhase = 'passkey';
-                keyPrompt.innerText = "SET_SECURE_PASSKEY:";
-                keyInput.type = "password";
-                keyInput.value = ""; 
-                userInput.value = ""; 
-                statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
-            } 
+        // 3. THE INTERFACE FLUSH (This fixes the "sitting there" issue)
+        console.log("[SYSTEM]: ID_ACCEPTED. FLUSHING_TERMINAL...");
+    
+        signupPhase = 'passkey'; // Flip the internal switch
+    
+        // Explicitly clear and update the UI
+        keyPrompt.innerText = "SET_SECURE_PASSKEY:";
+        keyInput.type = "password"; // Changes input to dots/stars
+        keyInput.value = "";        // Clears the email text
+        userInput.value = "";       // Clears the username text
+    
+        statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
+        statusDisplay.style.color = "var(--canary-yellow)";
+    
+        return; // Stop here and wait for the NEXT 'Enter' press
+}
             else if (signupPhase === 'passkey') {
                 signupData.password = keyInput.value.trim();
                 
