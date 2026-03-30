@@ -1983,29 +1983,30 @@ keyInput.addEventListener('keydown', async (e) => {
                 const data = await response.json();
 
                 if (response.ok) {
-    // THE FIX: Check 'data.role' directly instead of 'data.user.role'
     if (data.role === 'OVERSEER' || data.role === 'PATRON') {
         statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.role} <<`;
         statusDisplay.style.color = "var(--socio-green)";
         
-        // Save the token and role for the session
         sessionStorage.setItem('almty_token', data.token);
         sessionStorage.setItem('almty_role', data.role);
 
-        // Execute the redirect
-        setTimeout(() => { 
-            window.location.href = "dashboard.html"; 
+        // --- THE DE-CLOAK LOGIC ---
+        setTimeout(() => {
+            // 1. Hide the Gateway/Terminal
+            document.getElementById('gateway-overlay').style.display = 'none';
+            
+            // 2. Show the Actual Site (the dashboard/shop/vault)
+            const mainSite = document.getElementById('main-site');
+            mainSite.style.display = 'flex'; // or 'block', whatever your CSS uses
+            
+            console.log("[SYSTEM]: INTERFACE_DE_CLOAKED. WELCOME_ARCHITECT.");
         }, 1500);
     } 
-    // ACCESS PENDING: Socio (Tier 1)
     else {
-        statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. SITE_UNDER_CONSTRUCTION. <<";
+        // Socio / Waitlist logic stays the same
+        statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. <<";
         statusDisplay.style.color = "var(--canary-yellow)";
     }
-} else {
-    // If response is NOT ok, show the server's error message
-    statusDisplay.innerText = `>> ERROR: ${data.message ? data.message.toUpperCase() : 'AUTH_FAILED'} <<`;
-    statusDisplay.style.color = "var(--alert-red)";
 }
             } catch (error) {
                 statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
