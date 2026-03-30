@@ -1982,23 +1982,31 @@ keyInput.addEventListener('keydown', async (e) => {
 
                 const data = await response.json();
 
-                if (response.ok && data.user) {
-                    // ACCESS GRANTED: Overseer (Architect) or Patron (Tier 4)
-                    if (data.user.role === 'OVERSEER' || data.user.role === 'PATRON') {
-                        statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.user.role} <<`;
-                        statusDisplay.style.color = "var(--socio-green)";
-                        sessionStorage.setItem('almty_token', data.token);
-                        setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
-                    } 
-                    // ACCESS PENDING: Socio (Tier 1)
-                    else {
-                        statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. SITE_UNDER_CONSTRUCTION. <<";
-                        statusDisplay.style.color = "var(--canary-yellow)";
-                    }
-                } else {
-                    statusDisplay.innerText = `>> ERROR: ${data.message ? data.message.toUpperCase() : 'AUTH_FAILED'} <<`;
-                    statusDisplay.style.color = "var(--alert-red)";
-                }
+                if (response.ok) {
+    // THE FIX: Check 'data.role' directly instead of 'data.user.role'
+    if (data.role === 'OVERSEER' || data.role === 'PATRON') {
+        statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.role} <<`;
+        statusDisplay.style.color = "var(--socio-green)";
+        
+        // Save the token and role for the session
+        sessionStorage.setItem('almty_token', data.token);
+        sessionStorage.setItem('almty_role', data.role);
+
+        // Execute the redirect
+        setTimeout(() => { 
+            window.location.href = "dashboard.html"; 
+        }, 1500);
+    } 
+    // ACCESS PENDING: Socio (Tier 1)
+    else {
+        statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. SITE_UNDER_CONSTRUCTION. <<";
+        statusDisplay.style.color = "var(--canary-yellow)";
+    }
+} else {
+    // If response is NOT ok, show the server's error message
+    statusDisplay.innerText = `>> ERROR: ${data.message ? data.message.toUpperCase() : 'AUTH_FAILED'} <<`;
+    statusDisplay.style.color = "var(--alert-red)";
+}
             } catch (error) {
                 statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
                 console.error("Connection Error:", error);
