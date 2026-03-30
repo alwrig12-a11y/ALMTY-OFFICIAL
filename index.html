@@ -1776,7 +1776,7 @@ async function toggleSignup() {
         userPrompt.innerText = "ALMTY_ID:";
         keyPrompt.innerText = "CLEARANCE_KEY:";
         keyInput.type = "password"; 
-        signupBtn.innerText = "JOIN_WAITLIST (REQUEST_ACCESS)";
+        signupBtn.innerText = "CREATE_ACCOUNT";
     }
 }   
 async function refreshMasterData() {
@@ -1885,81 +1885,115 @@ keyInput.addEventListener('keydown', async (e) => {
         const statusDisplay = document.getElementById('status-display');
         const keyPrompt = document.getElementById('key-prompt');
         
-        // Ensure API_URL is accessible here
         if (typeof API_URL === 'undefined') {
             statusDisplay.innerText = ">> ERROR: CONFIG_MISSING <<";
             return;
         }
 
+        // --- MODE: SIGNUP (Ghost Evolution) ---
         if (gatewayMode === 'signup') {
-            // ... (Keep your signupPhase 'id' logic here)
-            if (signupPhase === 'passkey') {
+            if (signupPhase === 'id') {
+                signupData.username = userInput.value.toLowerCase().trim();
+                signupData.email = keyInput.value.trim();
+                
+                if (!signupData.username || !signupData.email) {
+                    statusDisplay.innerText = ">> ERROR: ID_AND_COMM_LINK_REQUIRED <<";
+                    return;
+                }
+
+                console.log("[SYSTEM]: ID_ACCEPTED. TRANSITIONING_TO_PASSKEY...");
+                signupPhase = 'passkey';
+                keyPrompt.innerText = "SET_SECURE_PASSKEY:";
+                keyInput.type = "password";
+                keyInput.value = ""; 
+                userInput.value = ""; 
+                statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
+            } 
+            else if (signupPhase === 'passkey') {
                 signupData.password = keyInput.value.trim();
-                statusDisplay.innerText = ">> STATUS: WAKING_NODE_502... (STAND BY) <<";
+                
+                // Tier Evolution & VIP Bypass
+                let assignedRole = 'SOCIO'; // Tier 1
+                let assignedStatus = 'waitlist';
+
+                if (signupData.username === 'almty') {
+                    assignedRole = 'OVERSEER';
+                    assignedStatus = 'active';
+                } else if (signupData.username === 'demo patron') {
+                    assignedRole = 'PATRON'; // Tier 4
+                    assignedStatus = 'active';
+                }
+
+                statusDisplay.innerText = ">> STATUS: EVOLVING_IDENTITY... <<";
                 startLoadingBar();
 
                 try {
                     const response = await fetch(`${API_URL}/api/users/register`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(signupData)
+                        body: JSON.stringify({
+                            username: signupData.username,
+                            email: signupData.email,
+                            password: signupData.password,
+                            role: assignedRole,
+                            status: assignedStatus
+                        })
                     });
-                    const data = await response.json();
 
                     if (response.ok) {
-                        statusDisplay.innerText = ">> SUCCESS: IDENTITY_QUEUED <<";
+                        statusDisplay.innerText = `>> SUCCESS: ${assignedRole}_IDENTITY_SYNCED. <<`;
                         setTimeout(() => toggleSignup(), 3000);
                     } else {
+                        const data = await response.json();
                         statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
                     }
                 } catch (err) {
                     statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (COLD_START) <<";
                 } finally {
-                    finishLoadingBar(); // ALWAYS closes the bar
+                    finishLoadingBar(); 
                 }
             }
-        } else {
-            // --- LOGIN MODE ---
+        } 
+        // --- MODE: LOGIN (Gatekeeper) ---
+        else {
             const username = userInput.value.toLowerCase().trim();
             const password = keyInput.value.trim();
 
-          try {
-    startLoadingBar();
-    statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
+            try {
+                startLoadingBar();
+                statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
 
-    const response = await fetch(`${API_URL}/api/users/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
+                const response = await fetch(`${API_URL}/api/users/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
 
-    const data = await response.json();
+                const data = await response.json();
 
-    if (response.ok) {
-    // SECURITY CHECK: Ensure 'data.user' actually exists before checking 'role'
-    if (data.user && data.user.role === 'OVERSEER') {
-        statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_OVERSEER <<";
-        statusDisplay.style.color = "var(--socio-green)";
-        sessionStorage.setItem('almty_token', data.token);
-        setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
-    } 
-    else if (data.user) {
-        // Known user, but just a Patron
-        statusDisplay.innerText = ">> NOTICE: IDENTITY_VERIFIED. SITE_UNDER_CONSTRUCTION. <<";
-        statusDisplay.style.color = "var(--canary-yellow)";
-    }
-} else {
-    // If response is NOT ok (Wrong password/User not found)
-    statusDisplay.innerText = `>> ERROR: ${data.message ? data.message.toUpperCase() : 'AUTH_FAILED'} <<`;
-    statusDisplay.style.color = "var(--alert-red)";
-}
-} catch (error) {
-    statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
-    console.error("Connection Error:", error);
-} finally {
-    // THIS ENSURES THE BAR GOES AWAY NO MATTER WHAT
-    finishLoadingBar(); 
-}  
+                if (response.ok && data.user) {
+                    // ACCESS GRANTED: Overseer (Architect) or Patron (Tier 4)
+                    if (data.user.role === 'OVERSEER' || data.user.role === 'PATRON') {
+                        statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.user.role} <<`;
+                        statusDisplay.style.color = "var(--socio-green)";
+                        sessionStorage.setItem('almty_token', data.token);
+                        setTimeout(() => { window.location.href = "dashboard.html"; }, 1500);
+                    } 
+                    // ACCESS PENDING: Socio (Tier 1)
+                    else {
+                        statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. SITE_UNDER_CONSTRUCTION. <<";
+                        statusDisplay.style.color = "var(--canary-yellow)";
+                    }
+                } else {
+                    statusDisplay.innerText = `>> ERROR: ${data.message ? data.message.toUpperCase() : 'AUTH_FAILED'} <<`;
+                    statusDisplay.style.color = "var(--alert-red)";
+                }
+            } catch (error) {
+                statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
+                console.error("Connection Error:", error);
+            } finally {
+                finishLoadingBar(); 
+            }  
         }
     }
 });
