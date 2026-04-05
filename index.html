@@ -1406,7 +1406,19 @@
             </div>
         </div>
     </div>
+    <div id="main-site" style="display:none;">
+    <h1>ALMTY // SOVEREIGN_VAULT</h1>
+    <nav>
+        <button>COLLECTIONS</button>
+        <button>IDENTITY</button>
+    </nav>
 
+    <div class="overseer-only" style="display:none; border: 1px solid red; padding: 20px;">
+        <h3>COMMAND_CENTER: ARCHITECT_CLEARANCE</h3>
+        <button onclick="viewSocioLedger()">VIEW_SOCIO_WAITLIST</button>
+        <button onclick="updateStock()">RESTOCK_ASSETS</button>
+    </div>
+    </div>
     <script>
         // THE ALMTY NODE ROUTER
     const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -1992,15 +2004,22 @@ keyInput.addEventListener('keydown', async (e) => {
 
         // --- THE DE-CLOAK LOGIC ---
         setTimeout(() => {
-            // 1. Hide the Gateway/Terminal
-            document.getElementById('gateway-overlay').style.display = 'none';
-            
-            // 2. Show the Actual Site (the dashboard/shop/vault)
-            const mainSite = document.getElementById('main-site');
-            mainSite.style.display = 'flex'; // or 'block', whatever your CSS uses
-            
-            console.log("[SYSTEM]: INTERFACE_DE_CLOAKED. WELCOME_ARCHITECT.");
-        }, 1500);
+    // 1. Hide the Terminal
+    document.getElementById('gateway-overlay').style.display = 'none';
+    
+    // 2. Show the Main Site
+    const mainSite = document.getElementById('main-site');
+    mainSite.style.display = 'flex';
+
+    // 3. THE OVERSEER REVEAL: Un-hide the Architect tools
+    if (data.role === 'OVERSEER') {
+        const adminTools = document.querySelectorAll('.overseer-only');
+        adminTools.forEach(tool => {
+            tool.style.display = 'block'; // Or 'flex'
+        });
+        console.log("[SYSTEM]: ARCHITECT_TOOLS_ENABLED.");
+    }
+    }, 1500);
     } 
     else {
         // Socio / Waitlist logic stays the same
