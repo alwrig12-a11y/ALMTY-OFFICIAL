@@ -1419,6 +1419,16 @@
         <button onclick="updateStock()">RESTOCK_ASSETS</button>
     </div>
     </div>
+    <div id="main-site" style="display: none;">
+    <h1>ALMTY // OFFICIAL_VAULT</h1>
+
+    <div class="overseer-only" style="display: none; border: 2px solid var(--socio-green); padding: 20px; margin-top: 20px;">
+        <h2 style="color: var(--socio-green);">>> COMMAND_CENTER: ARCHITECT_CLEARANCE <<</h2>
+        <p>REPETO_SYSTEM: ONLINE</p>
+        <button onclick="openSocioLedger()">VIEW_WAITLIST_LEDGER</button>
+        <button onclick="adjustInventory()">MANAGE_ASSETS</button>
+    </div>
+</div>
     <script>
         // THE ALMTY NODE ROUTER
     const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -1888,151 +1898,137 @@ function resetGateway() {
         }
     });
 
-    /**
+/**
  * [PROTOCOL]: UNIFIED_GATEWAY_HANDSHAKE
  * Handles both Waitlist Enrollment and Overseer Login
  */
 keyInput.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-        const statusDisplay = document.getElementById('status-display');
-        const keyPrompt = document.getElementById('key-prompt');
-        
-        if (typeof API_URL === 'undefined') {
-            statusDisplay.innerText = ">> ERROR: CONFIG_MISSING <<";
-            return;
-        }
+    if (e.key !== 'Enter') return;
 
-        // --- MODE: SIGNUP (Ghost Evolution) ---
-        if (gatewayMode === 'signup') {
-            // --- PHASE 1: ID & EMAIL ENTRY (The Transition) ---
+    const statusDisplay = document.getElementById('status-display');
+    const keyPrompt = document.getElementById('key-prompt');
+
+    if (typeof API_URL === 'undefined') {
+        statusDisplay.innerText = ">> ERROR: CONFIG_MISSING <<";
+        return;
+    }
+
+    if (gatewayMode === 'signup') {
         if (signupPhase === 'id') {
-        // 1. Capture the data
             signupData.username = userInput.value.toLowerCase().trim();
             signupData.email = keyInput.value.trim();
-    
-        // 2. Validation Check
-        if (!signupData.username || !signupData.email) {
-            statusDisplay.innerText = ">> ERROR: ID_AND_COMM_LINK_REQUIRED <<";
+
+            if (!signupData.username || !signupData.email) {
+                statusDisplay.innerText = ">> ERROR: ID_AND_COMM_LINK_REQUIRED <<";
+                return;
+            }
+
+            console.log("[SYSTEM]: ID_ACCEPTED. FLUSHING_TERMINAL...");
+
+            signupPhase = 'passkey';
+            keyPrompt.innerText = "SET_SECURE_PASSKEY:";
+            keyInput.type = "password";
+            keyInput.value = "";
+            userInput.value = "";
+
+            statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
+            statusDisplay.style.color = "var(--canary-yellow)";
             return;
         }
 
-        // 3. THE INTERFACE FLUSH (This fixes the "sitting there" issue)
-        console.log("[SYSTEM]: ID_ACCEPTED. FLUSHING_TERMINAL...");
-    
-        signupPhase = 'passkey'; // Flip the internal switch
-    
-        // Explicitly clear and update the UI
-        keyPrompt.innerText = "SET_SECURE_PASSKEY:";
-        keyInput.type = "password"; // Changes input to dots/stars
-        keyInput.value = "";        // Clears the email text
-        userInput.value = "";       // Clears the username text
-    
-        statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
-        statusDisplay.style.color = "var(--canary-yellow)";
-    
-        return; // Stop here and wait for the NEXT 'Enter' press
-}
-            else if (signupPhase === 'passkey') {
-                signupData.password = keyInput.value.trim();
-                
-                // Tier Evolution & VIP Bypass
-                let assignedRole = 'SOCIO'; // Tier 1
-                let assignedStatus = 'waitlist';
+        if (signupPhase === 'passkey') {
+            signupData.password = keyInput.value.trim();
 
-                if (signupData.username === 'almty') {
-                    assignedRole = 'OVERSEER';
-                    assignedStatus = 'active';
-                } else if (signupData.username === 'demo patron') {
-                    assignedRole = 'PATRON'; // Tier 4
-                    assignedStatus = 'active';
-                }
+            let assignedRole = 'SOCIO';
+            let assignedStatus = 'waitlist';
 
-                statusDisplay.innerText = ">> STATUS: EVOLVING_IDENTITY... <<";
-                startLoadingBar();
-
-                try {
-                    const response = await fetch(`${API_URL}/api/users/register`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            username: signupData.username,
-                            email: signupData.email,
-                            password: signupData.password,
-                            role: assignedRole,
-                            status: assignedStatus
-                        })
-                    });
-
-                    if (response.ok) {
-                        statusDisplay.innerText = `>> SUCCESS: ${assignedRole}_IDENTITY_SYNCED. <<`;
-                        setTimeout(() => toggleSignup(), 3000);
-                    } else {
-                        const data = await response.json();
-                        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-                    }
-                } catch (err) {
-                    statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (COLD_START) <<";
-                } finally {
-                    finishLoadingBar(); 
-                }
+            if (signupData.username === 'almty') {
+                assignedRole = 'OVERSEER';
+                assignedStatus = 'active';
+            } else if (signupData.username === 'demo patron') {
+                assignedRole = 'PATRON';
+                assignedStatus = 'active';
             }
-        } 
-        // --- MODE: LOGIN (Gatekeeper) ---
-        else {
-            const username = userInput.value.toLowerCase().trim();
-            const password = keyInput.value.trim();
+
+            statusDisplay.innerText = ">> STATUS: EVOLVING_IDENTITY... <<";
+            startLoadingBar();
 
             try {
-                startLoadingBar();
-                statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
-
-                const response = await fetch(`${API_URL}/api/users/login`, {
+                const response = await fetch(`${API_URL}/api/users/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({
+                        username: signupData.username,
+                        email: signupData.email,
+                        password: signupData.password,
+                        role: assignedRole,
+                        status: assignedStatus
+                    })
                 });
 
-                const data = await response.json();
-
                 if (response.ok) {
-    if (data.role === 'OVERSEER' || data.role === 'PATRON') {
-        statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.role} <<`;
-        statusDisplay.style.color = "var(--socio-green)";
-        
-        sessionStorage.setItem('almty_token', data.token);
-        sessionStorage.setItem('almty_role', data.role);
-
-        // --- THE DE-CLOAK LOGIC ---
-        setTimeout(() => {
-    // 1. Hide the Terminal
-    document.getElementById('gateway-overlay').style.display = 'none';
-    
-    // 2. Show the Main Site
-    const mainSite = document.getElementById('main-site');
-    mainSite.style.display = 'flex';
-
-    // 3. THE OVERSEER REVEAL: Un-hide the Architect tools
-    if (data.role === 'OVERSEER') {
-        const adminTools = document.querySelectorAll('.overseer-only');
-        adminTools.forEach(tool => {
-            tool.style.display = 'block'; // Or 'flex'
-        });
-        console.log("[SYSTEM]: ARCHITECT_TOOLS_ENABLED.");
-    }
-    }, 1500);
-    } 
-    else {
-        // Socio / Waitlist logic stays the same
-        statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. <<";
-        statusDisplay.style.color = "var(--canary-yellow)";
-    }
-}
-            } catch (error) {
-                statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
-                console.error("Connection Error:", error);
+                    statusDisplay.innerText = `>> SUCCESS: ${assignedRole}_IDENTITY_SYNCED. <<`;
+                    setTimeout(() => toggleSignup(), 3000);
+                } else {
+                    const data = await response.json();
+                    statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+                }
+            } catch (err) {
+                statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (COLD_START) <<";
             } finally {
-                finishLoadingBar(); 
-            }  
+                finishLoadingBar();
+            }
+        }
+    } else {
+        const username = userInput.value.toLowerCase().trim();
+        const password = keyInput.value.trim();
+
+        try {
+            startLoadingBar();
+            statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
+
+            const response = await fetch(`${API_URL}/api/users/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && (data.role === 'OVERSEER' || data.role === 'PATRON')) {
+                statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.role} <<`;
+                statusDisplay.style.color = "var(--socio-green)";
+
+                sessionStorage.setItem('almty_token', data.token);
+                sessionStorage.setItem('almty_role', data.role);
+
+                if (data.role === 'OVERSEER') {
+                    statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+
+                    setTimeout(() => {
+                        document.getElementById('gateway-overlay').style.display = 'none';
+                        document.getElementById('main-site').style.display = 'block';
+
+                        const adminElements = document.querySelectorAll('.overseer-only');
+                        adminElements.forEach(el => {
+                            el.style.display = 'block';
+                        });
+
+                        console.log("[SYSTEM]: ARCHITECT_TOOLS_DEPLOYED.");
+                    }, 1500);
+                } else {
+                    statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. <<";
+                    statusDisplay.style.color = "var(--canary-yellow)";
+                }
+            } else {
+                statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
+                statusDisplay.style.color = "var(--alert-red)";
+            }
+        } catch (error) {
+            statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
+            console.error("Connection Error:", error);
+        } finally {
+            finishLoadingBar();
         }
     }
 });
