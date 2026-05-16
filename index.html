@@ -2003,31 +2003,26 @@ keyInput.addEventListener('keydown', async (e) => {
 
             const data = await response.json();
 
-            if (response.ok && (data.role === 'OVERSEER' || data.role === 'PATRON')) {
+          if (response.ok && (data.role === 'OVERSEER' || data.role === 'PATRON')) {
                 statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.role} <<`;
                 statusDisplay.style.color = "var(--socio-green)";
 
+                // 1. Save standard tokens
                 sessionStorage.setItem('almty_token', data.token);
                 sessionStorage.setItem('almty_role', data.role);
 
-                if (data.role === 'OVERSEER') {
+                // 2. Inform the global state if this is the Master Overseer
+                isMasterOverseer = (data.role === 'OVERSEER');
+                
+                if (isMasterOverseer) {
                     statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
-
-                    setTimeout(() => {
-                        document.getElementById('gateway-overlay').style.display = 'none';
-                        document.getElementById('main-site').style.display = 'block';
-
-                        const adminElements = document.querySelectorAll('.overseer-only');
-                        adminElements.forEach(el => {
-                            el.style.display = 'block';
-                        });
-
-                        console.log("[SYSTEM]: ARCHITECT_TOOLS_DEPLOYED.");
-                    }, 1500);
-                } else {
-                    statusDisplay.innerText = ">> STATUS: SOCIO_JOURNEY_PENDING. <<";
-                    statusDisplay.style.color = "var(--canary-yellow)";
                 }
+
+                // 3. Trigger your official entry protocol instead of getting stuck!
+                setTimeout(() => {
+                    executeEntry(username); 
+                }, 1500);
+
             } else {
                 statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
                 statusDisplay.style.color = "var(--alert-red)";
