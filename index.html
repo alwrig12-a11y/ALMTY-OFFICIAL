@@ -1919,14 +1919,12 @@ keyInput.addEventListener('keydown', async (e) => {
             signupPhase = 'passkey';
             keyPrompt.innerText = "SET_SECURE_PASSKEY:";
             keyInput.type = "password";
-            keyInput.value = "";
-            userInput.value = "";
-
-            // ADDED: Clear both the hidden inputs AND the visual display spans
+            
+            // FIX: Only clear the bottom row (email -> passkey)
             keyInput.value = "";
             keyDisplay.innerText = ""; 
-            userInput.value = "";
-            userDisplay.innerText = "";
+            
+            // Notice: The lines clearing userInput and userDisplay have been completely removed!
 
             statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
             statusDisplay.style.color = "var(--canary-yellow)";
