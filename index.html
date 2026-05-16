@@ -1874,12 +1874,14 @@ function resetGateway() {
 
     // 1. THE VISUAL MASK (Handles the asterisks as you type)
     keyInput.addEventListener('input', () => {
-        if (gatewayMode === 'login') {
+        // UPDATED: Now checks if we are logging in OR setting a new passkey
+        if (gatewayMode === 'login' || signupPhase === 'passkey') {
             keyDisplay.innerText = "*".repeat(keyInput.value.length);
         } else {
             keyDisplay.innerText = keyInput.value;
         }
     });
+
     // 2. THE BACKSPACE PROTOCOL (Jump back to username if password box is empty)
     keyInput.addEventListener('keydown', (e) => {
         if (e.key === 'Backspace' && keyInput.value === '') {
@@ -1919,6 +1921,12 @@ keyInput.addEventListener('keydown', async (e) => {
             keyInput.type = "password";
             keyInput.value = "";
             userInput.value = "";
+
+            // ADDED: Clear both the hidden inputs AND the visual display spans
+            keyInput.value = "";
+            keyDisplay.innerText = ""; 
+            userInput.value = "";
+            userDisplay.innerText = "";
 
             statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
             statusDisplay.style.color = "var(--canary-yellow)";
