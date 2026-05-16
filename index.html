@@ -1113,6 +1113,14 @@
                 overflow-y: hidden;
                 white-space: nowrap; 
                 -webkit-overflow-scrolling: touch;
+                
+/* ADD THIS: Tells the browser background gestures can pass through */
+                pointer-events: none; 
+            }
+
+/* ADD THIS: Re-enables clicks/taps for the actual content inside the sidebar */
+            .sidebar * {
+                pointer-events: auto;
             }
             .file-link 
             { 
