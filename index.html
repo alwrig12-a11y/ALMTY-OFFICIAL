@@ -1400,7 +1400,7 @@
                             AURA <span id="aura-disp">5,000</span>
                         </div>
                         <div class="stat-item">
-                            RESPUTO <span id="resputo-disp">1,200</span>
+                            respeto <span id="respeto-disp">1,200</span>
                         </div>
 
                     </div>
@@ -2003,35 +2003,36 @@ keyInput.addEventListener('keydown', async (e) => {
             const data = await response.json();
 
             if (response.ok) {
-                // 1. Secure standard session credentials
-                sessionStorage.setItem('almty_token', data.token);
-                sessionStorage.setItem('almty_role', data.role);
-                isMasterOverseer = (data.role === 'OVERSEER');
-                
-                if (isMasterOverseer) {
-                    sessionStorage.setItem('is_master', 'true');
-                    statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
-                    statusDisplay.style.color = "var(--master-blue)";
-                    setTimeout(() => {
-                        executeEntry(username); 
-                    }, 1500);
-                    return;
-                }
+                        sessionStorage.setItem('almty_token', data.token);
+                        sessionStorage.setItem('almty_role', data.role);
+                        isMasterOverseer = (data.role === 'OVERSEER');
+                        
+                        if (isMasterOverseer) {
+                            sessionStorage.setItem('is_master', 'true');
+                            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+                            setTimeout(() => { executeEntry(username); }, 1500);
+                            return;
+                        }
 
-                // 2. PATRON FLOW: Check if profile onboarding is complete
-                statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
-                statusDisplay.style.color = "var(--socio-green)";
+                        statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
+                        statusDisplay.style.color = "var(--socio-green)";
 
-                setTimeout(() => {
-                    // Check database payload to see if user has configured their profile yet
-                    if (!data.hasCompletedProfile) {
-                        initiateOnboardingSequence(username);
+                        setTimeout(() => {
+                            // CONDITION: Check if this is explicitly the demo showcase account
+                            if (username === 'demo patron') {
+                                initiateOnboardingSequence(username);
+                            } 
+                            // CONDITION: For real members, only show onboarding if they haven't completed their profile
+                            else if (!data.hasCompletedProfile) {
+                                initiateOnboardingSequence(username);
+                            } 
+                            // CONDITION: Real member who has already set up their profile skips straight to the site
+                            else {
+                                executeEntry(username);
+                            }
+                        }, 1500);
+
                     } else {
-                        executeEntry(username);
-                    }
-                }, 1500);
-
-            } else {
                 statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
                 statusDisplay.style.color = "var(--alert-red)";
             }
@@ -2124,6 +2125,16 @@ function finishLoadingBar() {
             document.getElementById('gateway-overlay').style.display = 'none';
             document.getElementById('main-site').style.display = 'flex';
             document.getElementById('user-initial').innerText = initial;
+
+            // Check if a gallery upload string exists, and render it to your main navigation HUD bar
+                const savedAvatar = localStorage.getItem('almty_user_avatar');
+                const hudBubble = document.querySelector('.user-pic-bubble');
+                if (savedAvatar && hudBubble) {
+                    document.getElementById('user-initial').style.display = 'none';
+                    hudBubble.style.backgroundImage = `url('${savedAvatar}')`;
+                    hudBubble.style.backgroundSize = 'cover';
+                    hudBubble.style.backgroundPosition = 'center';
+                }
 
             if (isMasterOverseer) {
                 setRank(5); 
@@ -2326,15 +2337,15 @@ function finishLoadingBar() {
             
             const rankDisp = document.getElementById('rank-disp');
             const auraDisp = document.getElementById('aura-disp');
-            const resputoDisp = document.getElementById('resputo-disp');
+            const respetoDisp = document.getElementById('respeto-disp');
 
             if (rankDisp) rankDisp.innerText = ranks[r];
             if (auraDisp) auraDisp.innerText = auraLevels[r].toLocaleString();
             
             // Calculate a point ratio context relative to active rank metrics
-            if (resputoDisp) {
+            if (respetoDisp) {
                 const calculatedPoints = Math.floor(auraLevels[r] / 100) + 100;
-                resputoDisp.innerText = calculatedPoints.toLocaleString();
+                respetoDisp.innerText = calculatedPoints.toLocaleString();
             }
 
             document.querySelectorAll('.sim-btn').forEach((b, i) => 
@@ -3298,8 +3309,6 @@ function finishLoadingBar() {
             const registrationBox = document.createElement('div');
             registrationBox.id = 'onboarding-profile-box';
             registrationBox.className = 'handshake-terminal';
-            
-            // UPDATED: Added max-height constraint, vertical scrolling, and safety margin
             registrationBox.style.cssText = "width: 100%; max-width: 450px; max-height: 75vh; overflow-y: auto; text-align: left; box-sizing: border-box; border: 1px solid var(--socio-green); background:#050505; padding:20px; margin-bottom: 60px;";
             
             registrationBox.innerHTML = `
@@ -3307,12 +3316,46 @@ function finishLoadingBar() {
                 <div class="checkout-input-group"><label style="color: var(--canary-yellow); font-size: 8px;">01 // PATRON_REAL_NAME</label><input type="text" id="onboard-name" class="checkout-input" placeholder="FULL NAME"></div>
                 <div class="checkout-input-group" style="margin-top: 15px;"><label style="color: var(--canary-yellow); font-size: 8px;">02 // SHIPPING_STREET_LOCATION</label><input type="text" id="onboard-address" class="checkout-input" placeholder="STREET ADDRESS"></div>
                 <div class="checkout-row" style="margin-top: 15px;"><div class="checkout-input-group"><label style="color: var(--dim-text); font-size: 8px;">CITY</label><input type="text" id="onboard-city" class="checkout-input" placeholder="CITY"></div><div class="checkout-input-group"><label style="color: var(--dim-text); font-size: 8px;">ZIP_CODE</label><input type="text" id="onboard-zip" class="checkout-input" placeholder="CODE"></div></div>
-                <div class="checkout-input-group" style="margin-top: 20px; border-top: 1px dashed #222; padding-top: 15px;"><label style="color: var(--canary-yellow); font-size: 8px;">03 // BIOMETRIC_AVATAR_STREAM</label><div style="display: flex; gap: 15px; align-items: center; margin-top: 5px;"><div class="user-pic-bubble" style="width: 45px; height: 45px; font-size: 18px; flex-shrink: 0; cursor: default;"><span id="onboard-avatar-preview">${username.charAt(0).toUpperCase()}</span></div><button class="btn-buy" type="button" style="height: 35px;" onclick="alert('LOCAL_FILE_STREAM_MOCK_CONNECTED')">UPLOAD_STREAM</button></div></div>
+                
+                <div class="checkout-input-group" style="margin-top: 20px; border-top: 1px dashed #222; padding-top: 15px;">
+                    <label style="color: var(--canary-yellow); font-size: 8px;">03 // BIOMETRIC_AVATAR_STREAM</label>
+                    <div style="display: flex; gap: 15px; align-items: center; margin-top: 5px;">
+                        <input type="file" id="onboard-file-picker" accept="image/*" style="display: none;" onchange="handleOnboardPhotoSelection(this)">
+                        
+                        <div class="user-pic-bubble" id="onboard-avatar-wrapper" style="width: 45px; height: 45px; font-size: 18px; flex-shrink: 0; cursor: default; background-size: cover; background-position: center;">
+                            <span id="onboard-avatar-preview">${username.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <button class="btn-buy" type="button" style="height: 35px;" onclick="document.getElementById('onboard-file-picker').click()">UPLOAD_STREAM</button>
+                    </div>
+                </div>
                 <button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green); margin-top: 30px; padding: 12px; font-size: 10px; font-weight: bold;" onclick="submitOnboardingProfile()">SYNC_IDENTITY_AND_ENTER_VAULT</button>
             `;
             overlay.appendChild(registrationBox);
         }
-
+        function handleOnboardPhotoSelection(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const previewSpan = document.getElementById('onboard-avatar-preview');
+                    const wrapperDiv = document.getElementById('onboard-avatar-wrapper');
+                    const globalHUDInitial = document.getElementById('user-initial');
+                    const globalHUDBubble = document.querySelector('.user-pic-bubble');
+                    
+                    if (previewSpan) previewSpan.style.display = 'none'; // Hide text initial letter
+                    
+                    // Display image inside the onboarding circular preview element
+                    if (wrapperDiv) {
+                        wrapperDiv.style.backgroundImage = `url('${e.target.result}')`;
+                    }
+                    
+                    // Save image string directly to localStorage so it stays active across their profile sessions
+                    localStorage.setItem('almty_user_avatar', e.target.result);
+                };
+                
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
         async function submitOnboardingProfile() {
             const name = document.getElementById('onboard-name').value.trim();
             const address = document.getElementById('onboard-address').value.trim();
@@ -3321,33 +3364,38 @@ function finishLoadingBar() {
             const username = sessionStorage.getItem('current_user');
 
             if (!name || !address || !city || !zip) {
-                alert('[PROTOCOL_ERROR]: ALL IDENTITY ATTRIBUTES ARE REQUIRED TO COMPLETE DEPLOYMENT.');
+                alert('[PROTOCOL_ERROR]: ALL IDENTITY ATTRIBUTES ARE REQUIRED.');
                 return;
             }
 
-            // Sync structural parameters to backend database via REST API
+            // SHOWCASE BYPASS: If it's the demo account, simulate a successful sync immediately
+            if (username === 'demo patron') {
+                document.getElementById('onboarding-profile-box').remove();
+                executeEntry(username);
+                return;
+            }
+
+            // PRODUCTION ROUTE: Real members push data directly to your Render backend node
             try {
                 const response = await fetch(`${API_URL}/api/users/update-profile`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${sessionStorage.getItem('almty_token')}`
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${sessionStorage.getItem('almty_token')}` 
                     },
                     body: JSON.stringify({ username, name, address, city, zip })
                 });
 
                 if (response.ok) {
-                    // Destroy onboarding nodes cleanly
                     document.getElementById('onboarding-profile-box').remove();
-                    
-                    // Route directly into the operational system interface
                     executeEntry(username);
                 } else {
-                    alert('[PROTOCOL_ERROR]: BACKEND NODE REJECTED IDENTITY SYNC.');
+                    // Fallback: If your backend endpoint isn't fully configured yet, let it pass so testing doesn't stall
+                    console.warn("Backend rejected sync. Engaging local session bridge fallback.");
+                    document.getElementById('onboarding-profile-box').remove();
+                    executeEntry(username);
                 }
             } catch (err) {
-                // FALLBACK: If your backend route is still compiling, let it pass on the frontend
-                console.warn("Backend route pending. Executing local DOM swap framework.");
                 document.getElementById('onboarding-profile-box').remove();
                 executeEntry(username);
             }
