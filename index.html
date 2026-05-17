@@ -1990,27 +1990,49 @@ keyInput.addEventListener('keydown', async (e) => {
 
             const data = await response.json();
 
-          if (response.ok && (data.role === 'OVERSEER' || data.role === 'PATRON')) {
-                statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.role} <<`;
-                statusDisplay.style.color = "var(--socio-green)";
-
-                // 1. Save standard tokens
-                sessionStorage.setItem('almty_token', data.token);
-                sessionStorage.setItem('almty_role', data.role);
-
-                // 2. Inform the global state if this is the Master Overseer
-                isMasterOverseer = (data.role === 'OVERSEER');
-                
-                if (isMasterOverseer) {
-                    statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+            if (response.ok) {
+                // CHECK PHASE 1: Is this account stuck in the waitlist queue?
+                if (data.status === 'waitlist' || data.role === 'SOCIO') {
+                    statusDisplay.innerText = ">> ACCESS_DENIED: ID_FOUND_IN_WAITLIST_STREAM <<";
+                    statusDisplay.style.color = "var(--canary-yellow)";
+                    
+                    // Force clean visual cleanup so they know they are gated
+                    if (keyInput) {
+                        keyInput.value = "";
+                        keyDisplay.innerText = "";
+                    }
+                    console.log("[SYSTEM_GATE]: PATRON_GATED_UNDER_WAITLIST_PROTOCOL");
+                    return; // Halts execution here so they don't get logged in
                 }
 
-                // 3. Trigger your official entry protocol instead of getting stuck!
-                setTimeout(() => {
-                    executeEntry(username); 
-                }, 1500);
+                // CHECK PHASE 2: Standard authorized node entries
+                if (data.role === 'OVERSEER' || data.role === 'PATRON') {
+                    statusDisplay.innerText = `>> ACCESS_GRANTED: WELCOME_${data.role} <<`;
+                    statusDisplay.style.color = "var(--socio-green)";
+
+                    // Save standard tokens
+                    sessionStorage.setItem('almty_token', data.token);
+                    sessionStorage.setItem('almty_role', data.role);
+
+                    // Inform the global state if this is the Master Overseer
+                    isMasterOverseer = (data.role === 'OVERSEER');
+                    
+                    if (isMasterOverseer) {
+                        statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+                    }
+
+                    // Trigger entry sequence
+                    setTimeout(() => {
+                        executeEntry(username); 
+                    }, 1500);
+                } else {
+                    // Fallback for unidentified roles that aren't explicit waitlist statuses
+                    statusDisplay.innerText = ">> ERROR: CLEARANCE_LEVEL_UNVERIFIED <<";
+                    statusDisplay.style.color = "var(--alert-red)";
+                }
 
             } else {
+                // This fires if the server returns a 401/404/500 (Actual typo or wrong password)
                 statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
                 statusDisplay.style.color = "var(--alert-red)";
             }
