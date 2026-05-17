@@ -1106,21 +1106,29 @@
                 height: auto; 
                 border-right: none; 
                 border-bottom: 1px solid var(--accent); 
+                display: flex;         /* Ensures Flex rules stay active */
                 flex-direction: row; 
+                flex-shrink: 0;       /* PREVENTS the layout from squeezing the bar shut */
                 padding: 12px 15px; 
                 gap: 15px; 
-                overflow-x: auto; 
+                overflow-x: auto;      /* Native touch scrolling */
                 overflow-y: hidden;
                 white-space: nowrap; 
                 -webkit-overflow-scrolling: touch;
-                
-/* ADD THIS: Tells the browser background gestures can pass through */
-                pointer-events: none; 
+                box-sizing: border-box;
+
+                /* FIXED: Re-enable touch interactions so dragging works perfectly */
+                pointer-events: auto; 
             }
 
-/* ADD THIS: Re-enables clicks/taps for the actual content inside the sidebar */
+            /* FIXED: Clean up the universal catch-all rule */
             .sidebar * {
                 pointer-events: auto;
+            }
+            
+            /* OPTIONAL QUALITY OF LIFE: Hidden scrollbar track styling for ultra-sleek UI */
+            .sidebar::-webkit-scrollbar {
+                display: none; /* Keeps the terminal look clean without a clunky scrollbar track */
             }
             .file-link 
             { 
