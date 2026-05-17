@@ -2428,8 +2428,23 @@ function finishLoadingBar() {
                 links += `<a class="file-link" id="nav-market" onclick="loadPage('market')" style="color:var(--canary-yellow);">00_THE_MARKET</a>`;
             }
             
-            // Logout is universal
-            links += `<a class="file-link" onclick="logoutProtocol()" style="margin-top:auto; color:var(--alert-red); border-top:1px solid #111; padding-top:20px;">X_TERMINATE_SESSION</a>`;
+            // ---------------------------------------------------------------------
+            // EXTERNAL STREAM NETWORKS (SOCIALS)
+            // ---------------------------------------------------------------------
+            links += `<div class="sidebar-divider" style="margin-top: auto; padding-top: 10px;"></div>`;
+            links += `<div style="color:var(--dim-text); font-size:8px; margin-bottom:10px; letter-spacing:1px;">EXTERNAL_STREAMS</div>`;
+            
+            links += `<a class="file-link" href="https://x.com/almty_io" target="_blank" style="color: var(--military-white);">//_X_NETWORK</a>`;
+            links += `<a class="file-link" href="https://instagram.com/almty.io" target="_blank" style="color: var(--military-white);">//_INSTAGRAM</a>`;
+            links += `<a class="file-link" href="https://discord.gg/XEKUfmSmTj" target="_blank" style="color: var(--military-white);">//_DISCORD_NODE</a>`;
+            links += `<a class="file-link" href="https://tiktok.com/@almty.io" target="_blank" style="color: var(--military-white);">//_TIKTOK_STREAM</a>`;
+            links += `<a class="file-link" href="https://threads.com/almty.io" target="_blank" style="color: var(--military-white);">//_THREADS_CHANNEL</a>`;
+
+            // YouTube Pipeline Placeholder
+            links += `<a class="file-link" style="color: #333333; cursor: not-allowed;" onclick="alert('[SYSTEM_NOTICE]: YOUTUBE_STREAM_PIPELINE_COMPILING_Q3')">//_YOUTUBE_LINK [OFFLINE]</a>`;
+
+            // Logout remains underneath the streams
+            links += `<a class="file-link" onclick="logoutProtocol()" style="color:var(--alert-red); border-top:1px solid #111; padding-top:15px; margin-top:10px;">X_TERMINATE_SESSION</a>`;
             
             nav.innerHTML = links;
         }
