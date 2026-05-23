@@ -2143,12 +2143,23 @@ function finishLoadingBar() {
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) simHub.style.display = 'none';
             } else {
-                setRank(1); 
+                // Determine user's landing rank
+                let initialRank = 1; // Default starting rank for real users (SOCIO)
+                
+                setRank(initialRank); 
                 updateSidebar();
                 loadPage('manifesto');
+                
+                // FIX: Hide simulation tier toggles for real members, expose only for the demo showcase profile
+                const simHub = document.getElementById('rank-toggles-container');
+                if (simHub) {
+                    if (almtyId === 'demo patron') {
+                        simHub.style.display = 'flex'; // Visible for demonstration
+                    } else {
+                        simHub.style.display = 'none'; // Completely hidden for real accounts
+                    }
+                }
             }
-        }, 800);
-    }
 
     /**
      * Initialization Hook: Checks for active session on boot.
@@ -2173,9 +2184,20 @@ function finishLoadingBar() {
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) simHub.style.display = 'none';
             } else {
-                setRank(4);
+                setRank(1);
                 updateSidebar();
                 loadPage('manifesto');
+
+                // FIX: Ensure the simulation hub stays hidden on page reload/refresh
+                const simHub = document.getElementById('rank-toggles-container');
+                if (simHub) {
+                    if (almtyId === 'demo patron') {
+                        simHub.style.display = 'flex';
+                    } else {
+                        simHub.style.display = 'none';
+                    }
+                }
+
             }
         }
     });
