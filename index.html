@@ -2126,16 +2126,6 @@ function finishLoadingBar() {
             document.getElementById('main-site').style.display = 'flex';
             document.getElementById('user-initial').innerText = initial;
 
-            // Check if a gallery upload string exists, and render it to your main navigation HUD bar
-                const savedAvatar = localStorage.getItem('almty_user_avatar');
-                const hudBubble = document.querySelector('.user-pic-bubble');
-                if (savedAvatar && hudBubble) {
-                    document.getElementById('user-initial').style.display = 'none';
-                    hudBubble.style.backgroundImage = `url('${savedAvatar}')`;
-                    hudBubble.style.backgroundSize = 'cover';
-                    hudBubble.style.backgroundPosition = 'center';
-                }
-
             if (isMasterOverseer) {
                 setRank(5); 
                 updateSidebar();
@@ -2159,8 +2149,9 @@ function finishLoadingBar() {
                         simHub.style.display = 'none'; // Completely hidden for real accounts
                     }
                 }
-            }
-
+            } // <--- Closes the 'else' block for standard users
+        }, 800); // <--- Closes the setTimeout block
+    } // <--- Closes the executeEntry function
     /**
      * Initialization Hook: Checks for active session on boot.
      */
@@ -2197,9 +2188,8 @@ function finishLoadingBar() {
                         simHub.style.display = 'none';
                     }
                 }
-
             }
-        }
+        } // <--- FIX: This properly closes the 'if' statement without the rogue timer
     });
         /**
          * THE TYPEWRITER PROTOCOL
