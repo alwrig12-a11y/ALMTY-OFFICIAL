@@ -1397,10 +1397,10 @@
                             RANK <span id="rank-disp">SOCIO</span>
                         </div>
                         <div class="stat-item">
-                            AURA <span id="aura-disp">5,000</span>
+                            AURA <span id="aura-disp">0</span>
                         </div>
                         <div class="stat-item">
-                            respeto <span id="respeto-disp">1,200</span>
+                            respeto <span id="respeto-disp">0</span>
                         </div>
 
                     </div>
@@ -2178,20 +2178,6 @@ function finishLoadingBar() {
                 setRank(1);
                 updateSidebar();
                 loadPage('manifesto');
-
-                // FIX: Bulletproof check for both spelling varaiations of the demo account
-                const normalizedAlmtyId = almtyId.toLowerCase
-                if (normalizedAlmtyId === 'demo patron' || normalizedAlmtyId === 'demo') {
-                    const simHub = document.getElementById('rank-toggles-container');
-                    if (simHub) {
-                        simHub.style.display = 'flex';
-                    }
-                } else {
-                    const simHub = document.getElementById('rank-toggles-container');
-                    if (simHub) {
-                        simHub.style.display = 'none';
-                    }
-                }
 
                 // FIX: Ensure the simulation hub stays hidden on page reload/refresh
                 const simHub = document.getElementById('rank-toggles-container');
