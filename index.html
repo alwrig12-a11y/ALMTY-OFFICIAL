@@ -2179,6 +2179,20 @@ function finishLoadingBar() {
                 updateSidebar();
                 loadPage('manifesto');
 
+                // FIX: Bulletproof check for both spelling varaiations of the demo account
+                const normalizedAlmtyId = almtyId.toLowerCase
+                if (normalizedAlmtyId === 'demo patron' || normalizedAlmtyId === 'demo') {
+                    const simHub = document.getElementById('rank-toggles-container');
+                    if (simHub) {
+                        simHub.style.display = 'flex';
+                    }
+                } else {
+                    const simHub = document.getElementById('rank-toggles-container');
+                    if (simHub) {
+                        simHub.style.display = 'none';
+                    }
+                }
+
                 // FIX: Ensure the simulation hub stays hidden on page reload/refresh
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) {
