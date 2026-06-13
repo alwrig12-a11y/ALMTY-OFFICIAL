@@ -337,24 +337,40 @@
         { 
             display: flex; 
             flex-wrap: wrap; 
-            gap: 5px; 
-            justify-content: flex-end; 
+            gap: 8px; 
+            justify-content: flex-start;
+            align-items: center;
+            flex: 1;
         }
 
         .sim-btn 
         { 
-            font-size: 6px; 
-            color: #444444; 
-            border: 1px solid #222222; 
-            padding: 4px 6px; 
+            font-size: 11px; 
+            color: var(--dim-text); 
+            border: 2px solid #333333; 
+            padding: 8px 12px; 
             cursor: pointer; 
             transition: all 0.2s ease;
+            background: transparent;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sim-btn:hover 
+        { 
+            color: var(--socio-green); 
+            border-color: var(--socio-green); 
+            text-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
         }
 
         .sim-btn.active 
         { 
             color: var(--canary-yellow); 
             border-color: var(--canary-yellow); 
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+            background: rgba(255, 215, 0, 0.05);
         }
         
         .user-hud-container 
@@ -2374,7 +2390,7 @@ function finishLoadingBar() {
             
             updateSidebar();
             
-            // Auto-navigate to appropriate storefront based on rank
+            // Auto-navigate to appropriate storefront based on CURRENT rank
             if (r === 0 || r === 1) {
                 loadPage('front'); // GHOST and SOCIO use THE FRONT
             } else if (r === 2) {
