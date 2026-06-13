@@ -386,7 +386,7 @@
             height: 32px; 
             border-radius: 50%; 
             border: 1px solid var(--socio-green);
-            background: #111111; 
+            background: #111111 url('glowlogo.png') center/cover; 
             display: flex; 
             justify-content: center; 
             align-items: center;
@@ -2139,10 +2139,21 @@ function finishLoadingBar() {
         }
         document.getElementById('gateway-overlay').style.opacity = '0';
         setTimeout(() => {
-            const initial = (almtyId && almtyId.length > 0) ? almtyId.charAt(0).toUpperCase() : 'A';
             document.getElementById('gateway-overlay').style.display = 'none';
             document.getElementById('main-site').style.display = 'flex';
-            document.getElementById('user-initial').innerText = initial;
+            
+            // Load saved avatar or use default logo
+            const savedAvatar = localStorage.getItem('almty_user_avatar');
+            const userInitial = document.getElementById('user-initial');
+            const userPicBubble = document.querySelector('.user-pic-bubble');
+            
+            if (savedAvatar && userPicBubble) {
+                userPicBubble.style.backgroundImage = `url('${savedAvatar}')`;
+                if (userInitial) userInitial.style.display = 'none';
+            } else {
+                // Default: show logo (set in CSS) and hide initial text
+                if (userInitial) userInitial.style.display = 'none';
+            }
 
             if (isMasterOverseer) {
                 setRank(5); 
@@ -3223,11 +3234,13 @@ function finishLoadingBar() {
                     <input type="text" class="handshake-input" style="font-family: 'JetBrains Mono', monospace;" value="${currentUserId.toUpperCase()}">
                     
                     <span class="handshake-label">02 // BIOMETRIC_AVATAR_STREAM</span>
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <div class="user-pic-bubble" style="width:60px; height:60px; font-size:24px;">
-                            <span>${currentUserId.charAt(0).toUpperCase()}</span>
+                    <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                        <div class="user-pic-bubble" id="edit-avatar-preview" style="width:60px; height:60px; font-size:24px; background-size: cover; background-position: center;">
                         </div>
-                        <button class="btn-buy" style="flex:1;">UPLOAD_NEW_STREAM</button>
+                        <div style="flex:1;">
+                            <input type="file" id="edit-avatar-file-picker" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
+                            <button class="btn-buy" style="width:100%; cursor:pointer;" onclick="document.getElementById('edit-avatar-file-picker').click()">UPLOAD_NEW_STREAM</button>
+                        </div>
                     </div>
                     
                     <button class="btn-buy" style="border-color:var(--socio-green); color:var(--socio-green); margin-top:20px;" onclick="alert('PROFILE_SYNC_COMPLETE')">
@@ -3284,6 +3297,18 @@ function finishLoadingBar() {
             // -----------------------------------------------------------------
             // POST-RENDER DOM MANIPULATION TRIGGERS
             // -----------------------------------------------------------------
+            if (page === 'edit_profile') 
+            {
+                const savedAvatar = localStorage.getItem('almty_user_avatar');
+                const previewDiv = document.getElementById('edit-avatar-preview');
+                if (previewDiv) {
+                    if (savedAvatar) {
+                        previewDiv.style.backgroundImage = `url('${savedAvatar}')`;
+                    } else {
+                        previewDiv.style.backgroundImage = "url('glowlogo.png')";
+                    }
+                }
+            }
             if (page === 'front') 
             {
                 renderGrid(storeAssets);
@@ -3384,6 +3409,32 @@ function finishLoadingBar() {
                     }
                     
                     // Save image string directly to localStorage so it stays active across their profile sessions
+                    localStorage.setItem('almty_user_avatar', e.target.result);
+                };
+                
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function handleAvatarUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const previewDiv = document.getElementById('edit-avatar-preview');
+                    const globalUserPicBubble = document.querySelector('.user-pic-bubble:not(#edit-avatar-preview)');
+                    
+                    // Update the preview in edit profile page
+                    if (previewDiv) {
+                        previewDiv.style.backgroundImage = `url('${e.target.result}')`;
+                    }
+                    
+                    // Update the global avatar in the header
+                    if (globalUserPicBubble) {
+                        globalUserPicBubble.style.backgroundImage = `url('${e.target.result}')`;
+                    }
+                    
+                    // Save image to localStorage for persistence
                     localStorage.setItem('almty_user_avatar', e.target.result);
                 };
                 
