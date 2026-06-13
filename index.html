@@ -1470,6 +1470,7 @@
          */
         let loginPhase = 'user'; 
         let isMasterOverseer = false;
+        let currentUser = ''; // Track current user for rank switching permissions
         let gatewayMode = 'login'; 
         let signupPhase = 'id'; // Tracks the 3 steps: 'id' -> 'email' -> 'passkey'
         let signupBuffer = { username: '', email: '', password: '' }; // Stores data between phases
@@ -2116,6 +2117,7 @@ function finishLoadingBar() {
     function executeEntry(almtyId) {
         sessionStorage.setItem('protocol_clearance', 'authorized');
         sessionStorage.setItem('current_user', almtyId);
+        currentUser = almtyId; // Set the current user for rank switching permissions
         if (isMasterOverseer) {
             sessionStorage.setItem('is_master', 'true');
         }
@@ -2345,6 +2347,11 @@ function finishLoadingBar() {
          */
         function setRank(r) 
         {
+            // Only allow rank switching for demo patron account
+            if (currentUser !== 'demo patron') {
+                return;
+            }
+
             currentRank = r;
             
             const rankDisp = document.getElementById('rank-disp');
@@ -2367,17 +2374,16 @@ function finishLoadingBar() {
             
             updateSidebar();
             
-            // Only reload page if not Master, to prevent master from losing dashboard
-            if (!isMasterOverseer)
-            {
-                const activeLink = document.querySelector('.file-link.active');
-                if (activeLink) 
-                {
-                    const pageId = activeLink.id.replace('nav-', '');
-                    loadPage(pageId);
-                }
+            // Auto-navigate to appropriate storefront based on rank
+            if (r === 0 || r === 1) {
+                loadPage('front'); // GHOST and SOCIO use THE FRONT
+            } else if (r === 2) {
+                loadPage('archive'); // SOLDATO gets ARCHIVE
+            } else if (r >= 3) {
+                loadPage('sanctum'); // CAPO and above get SANCTUM
             }
         }
+
 
         /**
          * Dynamically generates the left-hand architecture based on rank and permissions.
