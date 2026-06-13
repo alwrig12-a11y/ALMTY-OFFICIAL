@@ -1365,7 +1365,7 @@
     </div>
 
     <div id="main-site" style="display:none; flex-direction:column; height:100%;">
-        
+        <!-- Main site container - single instance -->
         <div class="top-nav">
             <div style="display: flex; align-items: flex-start;">
                 <img 
@@ -1426,37 +1426,61 @@
             </div>
         </div>
     </div>
-    <div id="main-site" style="display:none;">
-    <h1>ALMTY // SOVEREIGN_VAULT</h1>
-    <nav>
-        <button>COLLECTIONS</button>
-        <button>IDENTITY</button>
-    </nav>
-
-    <div class="overseer-only" style="display:none; border: 1px solid red; padding: 20px;">
-        <h3>COMMAND_CENTER: ARCHITECT_CLEARANCE</h3>
-        <button onclick="viewSocioLedger()">VIEW_SOCIO_WAITLIST</button>
-        <button onclick="updateStock()">RESTOCK_ASSETS</button>
-    </div>
-    </div>
-    <div id="main-site" style="display: none;">
-    <h1>ALMTY // OFFICIAL_VAULT</h1>
-
-    <div class="overseer-only" style="display: none; border: 2px solid var(--socio-green); padding: 20px; margin-top: 20px;">
-        <h2 style="color: var(--socio-green);">>> COMMAND_CENTER: ARCHITECT_CLEARANCE <<</h2>
-        <p>REPETO_SYSTEM: ONLINE</p>
-        <button onclick="openSocioLedger()">VIEW_WAITLIST_LEDGER</button>
-        <button onclick="adjustInventory()">MANAGE_ASSETS</button>
-    </div>
-</div>
     <script>
-        // THE ALMTY NODE ROUTER
-    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:5000' 
-        : 'https://almty-backend.onrender.com'; // <--- Ensure this matches your Render Service name
-
-        /** * DOM Element References for the Authentication Gateway 
-         */
+        // ========================================================================
+        // ALMTY NODE ROUTER - CONFIGURATION & SECURITY
+        // ========================================================================
+        
+        // API_URL uses relative path to avoid exposing backend service names
+        // For local dev: automatically uses localhost:5000
+        const API_URL = (() => {
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return 'http://localhost:5000';
+            }
+            return '/api';
+        })();
+        
+        // CSRF Token management for secure API requests
+        let csrfToken = null;
+        
+        // Session management - token is stored in sessionStorage with expiration tracking
+        const SessionManager = {
+            setToken: (token, expiresIn = 3600000) => {
+                const expireTime = Date.now() + expiresIn;
+                sessionStorage.setItem('almty_session_token', token);
+                sessionStorage.setItem('almty_token_expires', expireTime.toString());
+            },
+            getToken: () => {
+                const token = sessionStorage.getItem('almty_session_token');
+                const expireTime = parseInt(sessionStorage.getItem('almty_token_expires') || '0');
+                
+                if (Date.now() > expireTime) {
+                    SessionManager.clearSession();
+                    return null;
+                }
+                return token;
+            },
+            clearSession: () => {
+                sessionStorage.removeItem('almty_session_token');
+                sessionStorage.removeItem('almty_token_expires');
+                sessionStorage.removeItem('current_user');
+            },
+            isLoggedIn: () => SessionManager.getToken() !== null
+        };
+        
+        // ========================================================================
+        // INPUT VALIDATION UTILITIES
+        // ========================================================================
+        const Validators = {
+            isValidEmail: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+            isValidUsername: (username) => /^[a-z0-9_-]{3,20}$/.test(username.toLowerCase()),
+            isValidPassword: (password) => password && password.length >= 8,
+            sanitizeInput: (input) => String(input).trim().replace(/[<>]/g, '').substring(0, 255)
+        };
+        
+        // ========================================================================
+        // DOM ELEMENT REFERENCES FOR AUTHENTICATION GATEWAY
+        // ========================================================================
         const userInput = document.getElementById('user-input');
         const userDisplay = document.getElementById('user-display');
         const userCursor = document.getElementById('user-cursor');
@@ -1466,33 +1490,36 @@
         const keyCursor = document.getElementById('key-cursor');
         const signupBtn = document.getElementById('signup-toggle');
 
-        /** * Application State Variables 
-         */
+        // ========================================================================
+        // APPLICATION STATE VARIABLES
+        // ========================================================================
         let loginPhase = 'user'; 
-        let isMasterOverseer = false;
+        let isMasterOverseer = false; // SECURITY: Must be verified server-side via JWT
         let gatewayMode = 'login'; 
         let signupPhase = 'id'; // Tracks the 3 steps: 'id' -> 'email' -> 'passkey'
-        let signupBuffer = { username: '', email: '', password: '' }; // Stores data between phases
-        let signupData = { username: '', email: '', password: '' }; // The "Memory Buffer" for new Patrons
-        /** * Local Storage Hydration & Session State
-         */
-        let stashStream = JSON.parse(localStorage.getItem('stashStream')) || [];
+        let signupData = { username: '', email: '', password: '' }; // Temporary buffer - cleared after submission
+        let loginAttempts = 0; // Rate limiting counter
         
-        // Simulating a database of historical orders for the Master Dashboard to view
-        let orderHistory = JSON.parse(localStorage.getItem('orderHistory')) || [
-            { id: "NODE_401928", date: "2026-03-18 14:32:01", total: 450.00, status: "SHIPPED", customer: "Client_01" },
-            { id: "NODE_558192", date: "2026-03-19 09:15:44", total: 245.00, status: "DELIVERED", customer: "Client_02" },
-            { id: "NODE_771029", date: "2026-03-20 08:05:12", total: 110.00, status: "PROCESSING", customer: "Client_03" }
-        ];
+        // ========================================================================
+        // IN-MEMORY CART STATE (SessionStorage for cart data persistence)
+        // ========================================================================
+        let stashStream = (() => {
+            try {
+                return JSON.parse(sessionStorage.getItem('almty_stash') || '[]');
+            } catch {
+                return [];
+            }
+        })();
         
-        // Waitlist mock data
-        let waitlistQueue = JSON.parse(localStorage.getItem('almty_waitlist')) || [
-            { id: "ghost_runner", contact: "ghost@node502.com", timestamp: "2026-03-15T12:00:00Z" },
-            { id: "ky_native", contact: "local@louisville.ky", timestamp: "2026-03-16T14:30:00Z" }
-        ];
+        // Order history - fetched from server on login, not stored locally
+        let orderHistory = [];
+        
+        // Waitlist data - fetched from server in refreshMasterData(), not stored locally
+        let waitlistQueue = [];
 
-        /** * Rank System Configurations 
-         */
+        // ========================================================================
+        // RANK SYSTEM CONFIGURATIONS 
+        // ========================================================================
         let currentRank = 4;
         const ranks = ["GHOST", "SOCIO", "SOLDATO", "CAPO", "PATRON", "OVERSEER"];
         const auraLevels = [0, 5000, 15000, 35000, 60000, 999999];
@@ -1918,25 +1945,28 @@ keyInput.addEventListener('keydown', async (e) => {
 
     if (gatewayMode === 'signup') {
         if (signupPhase === 'id') {
-            signupData.username = userInput.value.toLowerCase().trim();
-            signupData.email = keyInput.value.trim();
+            signupData.username = Validators.sanitizeInput(userInput.value);
+            signupData.email = Validators.sanitizeInput(keyInput.value);
 
-            if (!signupData.username || !signupData.email) {
-                statusDisplay.innerText = ">> ERROR: ID_AND_COMM_LINK_REQUIRED <<";
+            // Validate inputs
+            if (!Validators.isValidUsername(signupData.username)) {
+                statusDisplay.innerText = ">> ERROR: USERNAME_INVALID. USE 3-20 CHARS (a-z, 0-9, -, _) <<";
+                return;
+            }
+            
+            if (!Validators.isValidEmail(signupData.email)) {
+                statusDisplay.innerText = ">> ERROR: EMAIL_INVALID. REQUIRED_FORMAT <<";
                 return;
             }
 
-            console.log("[SYSTEM]: ID_ACCEPTED. FLUSHING_TERMINAL...");
+            console.log("[SYSTEM]: ID_VALIDATED. AWAITING_PASSKEY...");
 
             signupPhase = 'passkey';
             keyPrompt.innerText = "SET_SECURE_PASSKEY:";
             keyInput.type = "password";
             
-            // FIX: Only clear the bottom row (email -> passkey)
             keyInput.value = "";
-            keyDisplay.innerText = ""; 
-            
-            // Notice: The lines clearing userInput and userDisplay have been completely removed!
+            keyDisplay.innerText = "";
 
             statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
             statusDisplay.style.color = "var(--canary-yellow)";
@@ -1944,17 +1974,11 @@ keyInput.addEventListener('keydown', async (e) => {
         }
 
         if (signupPhase === 'passkey') {
-            signupData.password = keyInput.value.trim();
+            signupData.password = keyInput.value;
 
-            let assignedRole = 'SOCIO';
-            let assignedStatus = 'active';
-
-            if (signupData.username === 'almty') {
-                assignedRole = 'OVERSEER';
-                assignedStatus = 'active';
-            } else if (signupData.username === 'demo patron') {
-                assignedRole = 'PATRON';
-                assignedStatus = 'active';
+            if (!Validators.isValidPassword(signupData.password)) {
+                statusDisplay.innerText = ">> ERROR: PASSKEY_WEAK. MINIMUM_8_CHARS_REQUIRED <<";
+                return;
             }
 
             statusDisplay.innerText = ">> STATUS: EVOLVING_IDENTITY... <<";
@@ -1967,28 +1991,47 @@ keyInput.addEventListener('keydown', async (e) => {
                     body: JSON.stringify({
                         username: signupData.username,
                         email: signupData.email,
-                        password: signupData.password,
-                        role: assignedRole,
-                        status: assignedStatus
+                        password: signupData.password
                     })
                 });
 
                 if (response.ok) {
-                    statusDisplay.innerText = `>> SUCCESS: ${assignedRole}_IDENTITY_SYNCED. <<`;
-                    setTimeout(() => toggleSignup(), 3000);
-                } else {
                     const data = await response.json();
-                    statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+                    statusDisplay.innerText = `>> SUCCESS: SOCIO_IDENTITY_SYNCED <<`;
+                    // Clear sensitive data after successful registration
+                    signupData = { username: '', email: '', password: '' };
+                    setTimeout(() => toggleSignup(), 2000);
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    statusDisplay.innerText = `>> ERROR: ${(errorData.message || 'REGISTRATION_FAILED').toUpperCase()} <<`;
                 }
             } catch (err) {
-                statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (COLD_START) <<";
+                console.error('[API_ERROR]:', err);
+                statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CONNECTION_FAILED) <<";
             } finally {
                 finishLoadingBar();
+                // Clear password from memory
+                signupData.password = '';
             }
         }
     } else {
-        const username = userInput.value.toLowerCase().trim();
-        const password = keyInput.value.trim();
+        // LOGIN MODE
+        const username = Validators.sanitizeInput(userInput.value);
+        const password = keyInput.value;
+
+        // Rate limiting check
+        if (loginAttempts >= 5) {
+            statusDisplay.innerText = ">> ERROR: TOO_MANY_ATTEMPTS. WAIT 5_MINUTES <<";
+            userInput.disabled = true;
+            keyInput.disabled = true;
+            setTimeout(() => {
+                userInput.disabled = false;
+                keyInput.disabled = false;
+                loginAttempts = 0;
+                resetGateway();
+            }, 300000);
+            return;
+        }
 
         try {
             startLoadingBar();
@@ -2003,27 +2046,21 @@ keyInput.addEventListener('keydown', async (e) => {
             const data = await response.json();
 
             if (response.ok) {
-                        sessionStorage.setItem('almty_token', data.token);
-                        sessionStorage.setItem('almty_role', data.role);
-                        isMasterOverseer = (data.role === 'OVERSEER');
-                        
-                        if (isMasterOverseer) {
-                            sessionStorage.setItem('is_master', 'true');
-                            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
-                            setTimeout(() => { executeEntry(username); }, 1500);
-                            return;
-                        }
+                loginAttempts = 0; // Reset on successful login
+                SessionManager.setToken(data.token, data.expiresIn);
+                isMasterOverseer = data.role === 'OVERSEER';
+                
+                if (isMasterOverseer) {
+                    statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+                    setTimeout(() => { executeEntry(username); }, 1500);
+                    return;
+                }
 
-                        statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
-                        statusDisplay.style.color = "var(--socio-green)";
+                statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
+                statusDisplay.style.color = "var(--socio-green)";
 
-                        setTimeout(() => {
-                            // CONDITION: Check if this is explicitly the demo showcase account
-                            if (username === 'demo patron') {
-                                initiateOnboardingSequence(username);
-                            } 
-                            // CONDITION: For real members, only show onboarding if they haven't completed their profile
-                            else if (!data.hasCompletedProfile) {
+                setTimeout(() => {
+                    if (!data.hasCompletedProfile) {
                                 initiateOnboardingSequence(username);
                             } 
                             // CONDITION: Real member who has already set up their profile skips straight to the site
@@ -2140,14 +2177,10 @@ function finishLoadingBar() {
                 updateSidebar();
                 loadPage('manifesto');
                 
-                // FIX: Hide simulation tier toggles for real members, expose only for the demo showcase profile
+                // Hide simulation tier toggles for production (only show if needed for dev/demo)
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) {
-                    if (almtyId === 'demo patron') {
-                        simHub.style.display = 'flex'; // Visible for demonstration
-                    } else {
-                        simHub.style.display = 'none'; // Completely hidden for real accounts
-                    }
+                    simHub.style.display = 'none';
                 }
             } // <--- Closes the 'else' block for standard users
         }, 800); // <--- Closes the setTimeout block
@@ -2179,14 +2212,10 @@ function finishLoadingBar() {
                 updateSidebar();
                 loadPage('manifesto');
 
-                // FIX: Ensure the simulation hub stays hidden on page reload/refresh
+                // Hide simulation tier toggles
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) {
-                    if (almtyId === 'demo patron') {
-                        simHub.style.display = 'flex';
-                    } else {
-                        simHub.style.display = 'none';
-                    }
+                    simHub.style.display = 'none';
                 }
             }
         } // <--- FIX: This properly closes the 'if' statement without the rogue timer
@@ -2317,7 +2346,7 @@ function finishLoadingBar() {
                 size: selectedSize
             });
             
-            localStorage.setItem('stashStream', JSON.stringify(stashStream));
+            sessionStorage.setItem('almty_stash', JSON.stringify(stashStream));
             
             document.getElementById('cart-count').innerText = stashStream.length;
             selectedSize = null;
@@ -2333,7 +2362,7 @@ function finishLoadingBar() {
         function removeFromStash(stashId) 
         {
             stashStream = stashStream.filter(item => item.stashId !== stashId);
-            localStorage.setItem('stashStream', JSON.stringify(stashStream));
+            sessionStorage.setItem('almty_stash', JSON.stringify(stashStream));
             
             document.getElementById('cart-count').innerText = stashStream.length;
             loadPage('cart');
@@ -2610,13 +2639,23 @@ function finishLoadingBar() {
 
             // Push to universal order history 
             orderHistory.unshift(newOrder);
-            localStorage.setItem('orderHistory', JSON.stringify(orderHistory));
             
-            // In a real database, we would iterate stashStream and decrement stockQuantity here.
-            // Because our inventory array is hardcoded in memory for this session, we skip local storage sync for inventory.
+            // Send order to server for persistence (not stored locally)
+            try {
+                await fetch(`${API_URL}/api/orders/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SessionManager.getToken()}`
+                    },
+                    body: JSON.stringify(newOrder)
+                }).catch(err => console.error('[API_ERROR]:', err));
+            } catch (err) {
+                console.error('[API_ERROR]:', err);
+            }
             
             stashStream = [];
-            localStorage.setItem('stashStream', JSON.stringify(stashStream));
+            sessionStorage.setItem('almty_stash', JSON.stringify(stashStream));
             
             document.getElementById('cart-count').innerText = 0;
 
@@ -3361,8 +3400,9 @@ function finishLoadingBar() {
                         wrapperDiv.style.backgroundImage = `url('${e.target.result}')`;
                     }
                     
-                    // Save image string directly to localStorage so it stays active across their profile sessions
-                    localStorage.setItem('almty_user_avatar', e.target.result);
+                    // Save image string to sessionStorage for this session
+                    // For persistence across sessions, send to server during profile sync
+                    sessionStorage.setItem('almty_user_avatar', e.target.result);
                 };
                 
                 reader.readAsDataURL(input.files[0]);
