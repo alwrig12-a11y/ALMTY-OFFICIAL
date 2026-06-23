@@ -1081,6 +1081,50 @@
             font-weight: normal;
         }
 
+/* ========================================================================
+   DYNAMIC RANK GATES & CLASSIFIED BLURS
+   ======================================================================== */
+.rank-gate-locked-container {
+    position: relative;
+    width: 100%;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1px dashed var(--accent);
+    background: rgba(5, 5, 5, 0.6);
+    padding: 40px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.rank-gate-blur-payload {
+    filter: blur(8px) grayscale(90%);
+    pointer-events: none;
+    user-select: none;
+    width: 100%;
+}
+
+.rank-gate-overlay-message {
+    position: absolute;
+    z-index: 20;
+    font-family: 'JetBrains Mono', monospace;
+    max-width: 400px;
+    background: #000000;
+    padding: 25px;
+    border: 1px solid var(--alert-red);
+    box-shadow: 0 0 20px rgba(255, 51, 51, 0.15);
+}
+
+.rank-gate-title {
+    font-family: 'Black Ops One', cursive;
+    font-size: 16px;
+    color: var(--alert-red);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
         /* ========================================================================
            MOBILE FRIENDLY / UNIFORMITY OVERRIDES
            Ensures tactical UI scales perfectly across devices.
@@ -2985,12 +3029,62 @@ function finishLoadingBar() {
                 return;
             }
 
+            // --- ALMTY BRAND RANK ARCHITECTURE LOGIC GATES ---
+            let accessLocked = false;
+            let requiredRankName = "";
+            let lockColor = "var(--alert-red)";
+
+            if (page === 'archive' && currentRank < 2) { // Requires SOLDATO to view/requisition
+                accessLocked = true;
+                requiredRankName = "SOLDATO (TIER 2)";
+                lockColor = "var(--canary-yellow)"; // Yellow style match from ArchiveView.jsx
+            } else if (page === 'sanctum' && currentRank < 3) { // Requires CAPO to view/claim
+                accessLocked = true;
+                requiredRankName = "CAPO (TIER 3)";
+                lockColor = "var(--master-blue)"; // Blue style match from SanctumView.jsx
+            }
+
             let pageBody = `
                 <div class="section-header">
                     <h1>${page.toUpperCase().replace('_', ' ')}</h1>
                 </div>
                 <div class="tab-content-body">
             `;
+
+            // If rank criteria isn't met, wrap the storefront layouts inside an encrypted blur layer
+            if (accessLocked) {
+                let mockupAssets = page === 'archive' ? archiveAssets : sanctumAssets;
+                
+                pageBody += `
+                <div class="rank-gate-locked-container" style="border-color: ${lockColor};">
+                    <div class="rank-gate-overlay-message" style="border-color: ${lockColor}; box-shadow: 0 0 20px ${lockColor}22;">
+                        <div class="rank-gate-title" style="color: ${lockColor};">[ACCESS_RESTRICTED]</div>
+                        <p style="font-size: 10px; line-height: 1.6; color: var(--military-white); margin: 0 0 15px 0;">
+                            YOUR STATION SIGNATURE CONTAINS INSUFFICIENT CLEARANCE VALUE. 
+                            <br>REQUIRED RANK: <span style="color: ${lockColor}; font-weight: bold;">${requiredRankName}</span>
+                        </p>
+                        <div style="font-size: 8px; color: var(--dim-text);">
+                            VALIDATE PHYSICAL HARDWARE OR EARN RESPETO TO SYNC THE NODE.
+                        </div>
+                    </div>
+                    <div class="rank-gate-blur-payload">
+                        <div class="merch-grid">
+                            ${mockupAssets.map(item => `
+                                <div class="merch-card">
+                                    <div class="merch-img"><div class="asset-blur"></div></div>
+                                    <div class="asset-label"><span>${item.name}</span><span>$???.??</span></div>
+                                    <button class="btn-buy" disabled>LOCKED_CLEARANCE</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+                
+                // Append footer rules and terminate process rendering early
+                pageBody += `</div><div class="global-tab-footer">ALMTY LLC // EIN: 33-2507723 // LOUISVILLE, KY // &copy; 2026 ALL RIGHTS RESERVED.</div>`;
+                view.innerHTML = pageBody;
+                return; 
+            }
 
             // -----------------------------------------------------------------
             // ROUTE: THE FRONT
@@ -3016,7 +3110,11 @@ function finishLoadingBar() {
             // -----------------------------------------------------------------
             else if (page === 'archive') 
             {
-                pageBody += `<div class="merch-grid" id="archive-grid"></div>`;
+                pageBody += `
+                <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--canary-yellow); background: rgba(255,215,0,0.04); color: var(--canary-yellow); padding: 10px; font-size: 11px; margin-bottom: 20px;">
+                    [SOCIO_CLEARANCE_REQUIRED] // ARCHIVE_ACCESS_UNLOCKED
+                </div>
+                <div class="merch-grid" id="archive-grid"></div>`;
             } 
             
             // -----------------------------------------------------------------
@@ -3024,7 +3122,11 @@ function finishLoadingBar() {
             // -----------------------------------------------------------------
             else if (page === 'sanctum') 
             {
-                pageBody += `<div class="merch-grid" id="sanctum-grid"></div>`;
+                pageBody += `
+                <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--master-blue); background: rgba(0,229,255,0.04); color: var(--master-blue); padding: 10px; font-size: 11px; margin-bottom: 20px;">
+                    [CAPO_CLEARANCE_REQUIRED] // SANCTUM_ACCESS_UNLOCKED
+                </div>
+                <div class="merch-grid" id="sanctum-grid"></div>`;
             } 
             
             // -----------------------------------------------------------------
