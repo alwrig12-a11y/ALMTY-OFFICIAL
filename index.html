@@ -3012,7 +3012,39 @@ function finishLoadingBar() {
          * ========================================================================
          * @param {string} page - Target routing identifier.
          */
-        function loadPage(page)
+        
+        /**
+        * Processes a partial Aura transaction, pushing the item into the checkout stream
+        */
+        function initializeAuraPartialPay(assetId) {
+    const asset = masterInventoryDb.find(a => a.id === assetId);
+    if (!asset || asset.stockQuantity <= 0) {
+        alert('[PROTOCOL_ERROR]: ASSET UNAVAILABLE FOR DEPLOYMENT.');
+        return;
+    }
+    
+    // Push item to checkout pipeline as an allocated aura securement
+    alert(`[AURA_SECURE]: Partial allocation validated for ${asset.name}. Item loaded to Stash Stream.`);
+    stashStream.push({ ...asset, stashId: Date.now(), size: 'OS', price: 0.00 }); // $0.00 cash authorization for partial points allocation
+    localStorage.setItem('stashStream', JSON.stringify(stashStream));
+    document.getElementById('cart-count').innerText = stashStream.length;
+    loadPage('cart');
+}
+
+        /**
+        * Directs the authorized rank tier to finish paying cash for the secured item
+        */
+        function finalizeCashPay(assetId) {
+            const asset = masterInventoryDb.find(a => a.id === assetId);
+            if (!asset) return;
+    
+        stashStream.push({ ...asset, stashId: Date.now(), size: 'OS' });
+        localStorage.setItem('stashStream', JSON.stringify(stashStream));
+        document.getElementById('cart-count').innerText = stashStream.length;
+        loadPage('checkout');
+        }
+        
+         function loadPage(page)
         {
             const view = document.getElementById('main-view');
             if (!view) return;
@@ -3150,37 +3182,93 @@ function finishLoadingBar() {
             } 
             
             // -----------------------------------------------------------------
+            // ROUTE: ARCHIVE
+            // -----------------------------------------------------------------
+            else if (page === 'archive') 
+            {
+                pageBody += `
+                <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--canary-yellow); background: rgba(255,215,0,0.04); color: var(--canary-yellow); padding: 10px; font-size: 11px; margin-bottom: 20px;">
+                    [ARCHIVE_STREAM] // ${currentRank === 1 ? 'SOCIO: SECURE PARTIAL REQUISITION VIA AURA' : 'SOLDATO+: COMPLETE REQUISITION VIA CASH'}
+                </div>
+                <div class="merch-grid" id="archive-grid"></div>`;
+                
+                pageBody += `</div><div class="global-tab-footer">ALMTY LLC // EIN: 33-2507723 // LOUISVILLE, KY // &copy; 2026 ALL RIGHTS RESERVED.</div>`;
+                view.innerHTML = pageBody;
+
+                const archiveGrid = document.getElementById('archive-grid');
+                if (archiveGrid) {
+                    archiveGrid.innerHTML = archiveAssets.map(item => {
+                        let actionButton = '';
+                        
+                        if (currentRank === 1) { // SOCIO TIER
+                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="initializeAuraPartialPay(${item.id})">PARTIAL PAY WITH AURA</button>`;
+                        } else if (currentRank >= 2) { // SOLDATO TIER AND ABOVE
+                            actionButton = `<button class="btn-buy" style="border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="finalizeCashPay(${item.id})">FINISH PAY WITH CASH</button>`;
+                        } else {
+                            actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">LOCKED</button>`;
+                        }
+                        
+                        return `
+                            <div class="merch-card">
+                                <div class="merch-img">
+                                    <div class="asset-blur" style="background: var(--canary-yellow);"></div>
+                                    ${item.stockQuantity <= 0 ? '<div class="coming-soon-overlay" style="color:var(--alert-red)">OUT_OF_STOCK</div>' : '<div class="coming-soon-overlay">ARCHIVE_SET</div>'}
+                                </div>
+                                <div class="asset-label">
+                                    <span>${item.name}</span>
+                                    <span style="color:var(--canary-yellow);">$${item.price.toFixed(2)}</span>
+                                </div>
+                                ${actionButton}
+                            </div>
+                        `;
+                    }).join('');
+                }
+                return; 
+            } 
+            
+            // -----------------------------------------------------------------
             // ROUTE: SANCTUM
             // -----------------------------------------------------------------
             else if (page === 'sanctum') 
             {
                 pageBody += `
                 <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--master-blue); background: rgba(0,229,255,0.04); color: var(--master-blue); padding: 10px; font-size: 11px; margin-bottom: 20px;">
-                    [SANCTUM_STREAM_UNLOCKED] // SECURE EXCLUSIVE PROTOCOLS VIA AURA PARTIAL TRANSACTION
+                    [SANCTUM_STREAM] // ${currentRank === 3 ? 'CAPO: SECURE PARTIAL REQUISITION VIA AURA' : 'PATRON: COMPLETE REQUISITION VIA CASH'}
                 </div>
                 <div class="merch-grid" id="sanctum-grid"></div>`;
                 
                 pageBody += `</div><div class="global-tab-footer">ALMTY LLC // EIN: 33-2507723 // LOUISVILLE, KY // &copy; 2026 ALL RIGHTS RESERVED.</div>`;
                 view.innerHTML = pageBody;
 
-                // Inject Custom Sanctum Items - Grid view visible to Capo & Patron, but limited to Aura purchase rules only
                 const sanctumGrid = document.getElementById('sanctum-grid');
                 if (sanctumGrid) {
-                    sanctumGrid.innerHTML = sanctumAssets.map(item => `
-                        <div class="merch-card">
-                            <div class="merch-img">
-                                <div class="asset-blur" style="background: var(--master-blue);"></div>
-                                ${item.stockQuantity <= 0 ? '<div class="coming-soon-overlay" style="color:var(--alert-red)">DEPLETED</div>' : '<div class="coming-soon-overlay">CLASSIFIED</div>'}
+                    sanctumGrid.innerHTML = sanctumAssets.map(item => {
+                        let actionButton = '';
+                        
+                        if (currentRank === 3) { // CAPO TIER
+                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="initializeAuraPartialPay(${item.id})">PARTIAL PAY WITH AURA</button>`;
+                        } else if (currentRank >= 4) { // PATRON TIER
+                            actionButton = `<button class="btn-buy" style="border-color: var(--master-blue); color: var(--master-blue);" onclick="finalizeCashPay(${item.id})">FINISH PAY WITH CASH</button>`;
+                        } else {
+                            actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">LOCKED</button>`;
+                        }
+                        
+                        return `
+                            <div class="merch-card">
+                                <div class="merch-img">
+                                    <div class="asset-blur" style="background: var(--master-blue);"></div>
+                                    ${item.stockQuantity <= 0 ? '<div class="coming-soon-overlay" style="color:var(--alert-red)">DEPLETED</div>' : '<div class="coming-soon-overlay">CLASSIFIED</div>'}
+                                </div>
+                                <div class="asset-label">
+                                    <span>${item.name}</span>
+                                    <span style="color:var(--master-blue);">$${item.price.toFixed(2)}</span>
+                                </div>
+                                ${actionButton}
                             </div>
-                            <div class="asset-label">
-                                <span>${item.name}</span>
-                                <span style="color:var(--master-blue);">$${item.price.toFixed(2)}</span>
-                            </div>
-                            <button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="alert('[SANCTUM_SYNC]: Secured using aura credit framework.')">ACQUIRE WITH AURA</button>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
-                return; // Prevent fallthrough execution
+                return; 
             }
             
             // -----------------------------------------------------------------
