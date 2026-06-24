@@ -2505,8 +2505,8 @@ function finishLoadingBar() {
                     { id: 'manifesto', label: 'Manifesto', minRank: 0 },
                     { id: 'handshake', label: 'Handshake', minRank: 0 },
                     { id: 'front', label: 'The Front', minRank: 0 },
-                    { id: 'archive', label: 'Archive', minRank: 2 },
-                    { id: 'sanctum', label: 'The Sanctum', minRank: 3 },
+                    { id: 'archive', label: 'Archive', minRank: 1 }, // Visibile to SOCIO and above
+                    { id: 'sanctum', label: 'The Sanctum', minRank: 3 }, // Only visible to Capo and Patron
                     { id: 'ledger', label: 'The Ledger', minRank: 0 },
                     { id: 'terms', label: 'Terms', minRank: 0 }
                 ];
@@ -3034,14 +3034,14 @@ function finishLoadingBar() {
             let requiredRankName = "";
             let lockColor = "var(--alert-red)";
 
-            if (page === 'archive' && currentRank < 2) { // Requires SOLDATO to view/requisition
+            if (page === 'archive' && currentRank < 1) { // Socio (Rank 1) can now pass into Archive
                 accessLocked = true;
-                requiredRankName = "SOLDATO (TIER 2)";
-                lockColor = "var(--canary-yellow)"; // Yellow style match from ArchiveView.jsx
+                requiredRankName = "SOCIO (TIER 1)";
+                lockColor = "var(--socio-green)"; 
             } else if (page === 'sanctum' && currentRank < 3) { // Requires CAPO to view/claim
                 accessLocked = true;
                 requiredRankName = "CAPO (TIER 3)";
-                lockColor = "var(--master-blue)"; // Blue style match from SanctumView.jsx
+                lockColor = "var(--master-blue)"; 
             }
 
             let pageBody = `
@@ -3105,16 +3105,48 @@ function finishLoadingBar() {
                 <div class="merch-grid" id="merch-grid-container"></div>`;
             } 
             
-            // -----------------------------------------------------------------
+             // -----------------------------------------------------------------
             // ROUTE: ARCHIVE
             // -----------------------------------------------------------------
             else if (page === 'archive') 
             {
                 pageBody += `
                 <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--canary-yellow); background: rgba(255,215,0,0.04); color: var(--canary-yellow); padding: 10px; font-size: 11px; margin-bottom: 20px;">
-                    [SOCIO_CLEARANCE_REQUIRED] // ARCHIVE_ACCESS_UNLOCKED
+                    [ARCHIVE_STREAM] // SECURE WITH AURA (SOCIO) // COMPLETE WITH CASH (SOLDATO+)
                 </div>
                 <div class="merch-grid" id="archive-grid"></div>`;
+                
+                // Construct closing markup and immediately insert into view to populate items
+                pageBody += `</div><div class="global-tab-footer">ALMTY LLC // EIN: 33-2507723 // LOUISVILLE, KY // &copy; 2026 ALL RIGHTS RESERVED.</div>`;
+                view.innerHTML = pageBody;
+
+                // Inject Custom Archive Items mapping buttons dynamically to user rank tier
+                const archiveGrid = document.getElementById('archive-grid');
+                if (archiveGrid) {
+                    archiveGrid.innerHTML = archiveAssets.map(item => {
+                        let actionButton = '';
+                        if (currentRank === 1) { // Socio
+                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="alert('[AURA_REQUISITION]: Partial purchase initialized using Aura.')">SECURE WITH AURA</button>`;
+                        } else { // Soldato (Rank 2) or higher
+                            actionButton = `<button class="btn-buy" style="border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="loadProductPage(${item.id})">FINISH PAYING CASH</button>`;
+                        }
+                        
+                        return `
+                            <div class="merch-card">
+                                <div class="merch-img">
+                                    <div class="asset-blur" style="background: var(--canary-yellow);"></div>
+                                    ${item.stockQuantity <= 0 ? '<div class="coming-soon-overlay" style="color:var(--alert-red)">OUT_OF_STOCK</div>' : '<div class="coming-soon-overlay">ARCHIVE_SET</div>'}
+                                </div>
+                                <div class="asset-label">
+                                    <span>${item.name}</span>
+                                    <span style="color:var(--canary-yellow);">$${item.price.toFixed(2)}</span>
+                                </div>
+                                ${actionButton}
+                            </div>
+                        `;
+                    }).join('');
+                }
+                return; // Prevent fallthrough execution
             } 
             
             // -----------------------------------------------------------------
@@ -3124,10 +3156,32 @@ function finishLoadingBar() {
             {
                 pageBody += `
                 <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--master-blue); background: rgba(0,229,255,0.04); color: var(--master-blue); padding: 10px; font-size: 11px; margin-bottom: 20px;">
-                    [CAPO_CLEARANCE_REQUIRED] // SANCTUM_ACCESS_UNLOCKED
+                    [SANCTUM_STREAM_UNLOCKED] // SECURE EXCLUSIVE PROTOCOLS VIA AURA PARTIAL TRANSACTION
                 </div>
                 <div class="merch-grid" id="sanctum-grid"></div>`;
-            } 
+                
+                pageBody += `</div><div class="global-tab-footer">ALMTY LLC // EIN: 33-2507723 // LOUISVILLE, KY // &copy; 2026 ALL RIGHTS RESERVED.</div>`;
+                view.innerHTML = pageBody;
+
+                // Inject Custom Sanctum Items - Grid view visible to Capo & Patron, but limited to Aura purchase rules only
+                const sanctumGrid = document.getElementById('sanctum-grid');
+                if (sanctumGrid) {
+                    sanctumGrid.innerHTML = sanctumAssets.map(item => `
+                        <div class="merch-card">
+                            <div class="merch-img">
+                                <div class="asset-blur" style="background: var(--master-blue);"></div>
+                                ${item.stockQuantity <= 0 ? '<div class="coming-soon-overlay" style="color:var(--alert-red)">DEPLETED</div>' : '<div class="coming-soon-overlay">CLASSIFIED</div>'}
+                            </div>
+                            <div class="asset-label">
+                                <span>${item.name}</span>
+                                <span style="color:var(--master-blue);">$${item.price.toFixed(2)}</span>
+                            </div>
+                            <button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="alert('[SANCTUM_SYNC]: Secured using aura credit framework.')">ACQUIRE WITH AURA</button>
+                        </div>
+                    `).join('');
+                }
+                return; // Prevent fallthrough execution
+            }
             
             // -----------------------------------------------------------------
             // ROUTE: CART
