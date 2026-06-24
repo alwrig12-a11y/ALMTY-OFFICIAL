@@ -3014,34 +3014,46 @@ function finishLoadingBar() {
          */
         
         /**
-        * Processes a partial Aura transaction, pushing the item into the checkout stream
-        */
-        function initializeAuraPartialPay(assetId) {
-    const asset = masterInventoryDb.find(a => a.id === assetId);
-    if (!asset || asset.stockQuantity <= 0) {
-        alert('[PROTOCOL_ERROR]: ASSET UNAVAILABLE FOR DEPLOYMENT.');
-        return;
-    }
-    
-    // Push item to checkout pipeline as an allocated aura securement
-    alert(`[AURA_SECURE]: Partial allocation validated for ${asset.name}. Item loaded to Stash Stream.`);
-    stashStream.push({ ...asset, stashId: Date.now(), size: 'OS', price: 0.00 }); // $0.00 cash authorization for partial points allocation
-    localStorage.setItem('stashStream', JSON.stringify(stashStream));
-    document.getElementById('cart-count').innerText = stashStream.length;
-    loadPage('cart');
-}
+         * Claims 40% value allocation via Aura allocation and passes asset to the stream
+         */
+        function processAuraAllocation(assetId, percentage) {
+            const asset = masterInventoryDb.find(a => a.id === assetId);
+            if (!asset || asset.stockQuantity <= 0) {
+                alert('[PROTOCOL_ERROR]: RESOURCE DEPLETED OR OFFLINE.');
+                return;
+            }
+            
+            const partialPrice = asset.price * percentage;
+            alert(`[AURA_LOCKED]: 40% asset retention initialized for ${asset.name}. Stored to Stash Stream.`);
+            
+            // Push to stash stream with the calculation showing only the aura deposit equivalent value
+            stashStream.push({ ...asset, stashId: Date.now(), size: 'OS', price: partialPrice, isAuraSecured: true });
+            localStorage.setItem('stashStream', JSON.stringify(stashStream));
+            document.getElementById('cart-count').innerText = stashStream.length;
+            loadPage('cart');
+        }
 
         /**
-        * Directs the authorized rank tier to finish paying cash for the secured item
-        */
-        function finalizeCashPay(assetId) {
+         * Collects outstanding 60% balance via financial interface routing
+         */
+        function processCashFulfillment(assetId, defaultPercentage) {
             const asset = masterInventoryDb.find(a => a.id === assetId);
             if (!asset) return;
-    
-        stashStream.push({ ...asset, stashId: Date.now(), size: 'OS' });
-        localStorage.setItem('stashStream', JSON.stringify(stashStream));
-        document.getElementById('cart-count').innerText = stashStream.length;
-        loadPage('checkout');
+            
+            // Check if this item is already sitting in the stream as a partial down payment
+            const itemInStream = stashStream.find(i => i.id === assetId && i.isAuraSecured);
+            const finalCashValue = itemInStream ? (asset.price * 0.60) : asset.price;
+            
+            if (itemInStream) {
+                alert(`[STREAM_SYNC]: Pending reservation discovered. Loading outstanding 60% cash balance.`);
+                // Clean old record
+                stashStream = stashStream.filter(i => i.stashId !== itemInStream.stashId);
+            }
+            
+            stashStream.push({ ...asset, stashId: Date.now(), size: 'OS', price: finalCashValue });
+            localStorage.setItem('stashStream', JSON.stringify(stashStream));
+            document.getElementById('cart-count').innerText = stashStream.length;
+            loadPage('checkout');
         }
         
          function loadPage(page)
@@ -3137,50 +3149,6 @@ function finishLoadingBar() {
                 <div class="merch-grid" id="merch-grid-container"></div>`;
             } 
             
-             // -----------------------------------------------------------------
-            // ROUTE: ARCHIVE
-            // -----------------------------------------------------------------
-            else if (page === 'archive') 
-            {
-                pageBody += `
-                <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--canary-yellow); background: rgba(255,215,0,0.04); color: var(--canary-yellow); padding: 10px; font-size: 11px; margin-bottom: 20px;">
-                    [ARCHIVE_STREAM] // SECURE WITH AURA (SOCIO) // COMPLETE WITH CASH (SOLDATO+)
-                </div>
-                <div class="merch-grid" id="archive-grid"></div>`;
-                
-                // Construct closing markup and immediately insert into view to populate items
-                pageBody += `</div><div class="global-tab-footer">ALMTY LLC // EIN: 33-2507723 // LOUISVILLE, KY // &copy; 2026 ALL RIGHTS RESERVED.</div>`;
-                view.innerHTML = pageBody;
-
-                // Inject Custom Archive Items mapping buttons dynamically to user rank tier
-                const archiveGrid = document.getElementById('archive-grid');
-                if (archiveGrid) {
-                    archiveGrid.innerHTML = archiveAssets.map(item => {
-                        let actionButton = '';
-                        if (currentRank === 1) { // Socio
-                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="alert('[AURA_REQUISITION]: Partial purchase initialized using Aura.')">SECURE WITH AURA</button>`;
-                        } else { // Soldato (Rank 2) or higher
-                            actionButton = `<button class="btn-buy" style="border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="loadProductPage(${item.id})">FINISH PAYING CASH</button>`;
-                        }
-                        
-                        return `
-                            <div class="merch-card">
-                                <div class="merch-img">
-                                    <div class="asset-blur" style="background: var(--canary-yellow);"></div>
-                                    ${item.stockQuantity <= 0 ? '<div class="coming-soon-overlay" style="color:var(--alert-red)">OUT_OF_STOCK</div>' : '<div class="coming-soon-overlay">ARCHIVE_SET</div>'}
-                                </div>
-                                <div class="asset-label">
-                                    <span>${item.name}</span>
-                                    <span style="color:var(--canary-yellow);">$${item.price.toFixed(2)}</span>
-                                </div>
-                                ${actionButton}
-                            </div>
-                        `;
-                    }).join('');
-                }
-                return; // Prevent fallthrough execution
-            } 
-            
             // -----------------------------------------------------------------
             // ROUTE: ARCHIVE
             // -----------------------------------------------------------------
@@ -3188,7 +3156,7 @@ function finishLoadingBar() {
             {
                 pageBody += `
                 <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--canary-yellow); background: rgba(255,215,0,0.04); color: var(--canary-yellow); padding: 10px; font-size: 11px; margin-bottom: 20px;">
-                    [ARCHIVE_STREAM] // ${currentRank === 1 ? 'SOCIO: SECURE PARTIAL REQUISITION VIA AURA' : 'SOLDATO+: COMPLETE REQUISITION VIA CASH'}
+                    [ARCHIVE_STREAM] // CURRENT CLEARANCE: ${ranks[currentRank]}
                 </div>
                 <div class="merch-grid" id="archive-grid"></div>`;
                 
@@ -3199,13 +3167,16 @@ function finishLoadingBar() {
                 if (archiveGrid) {
                     archiveGrid.innerHTML = archiveAssets.map(item => {
                         let actionButton = '';
+                        let priceDisplay = `$${item.price.toFixed(2)}`;
                         
-                        if (currentRank === 1) { // SOCIO TIER
-                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="initializeAuraPartialPay(${item.id})">PARTIAL PAY WITH AURA</button>`;
-                        } else if (currentRank >= 2) { // SOLDATO TIER AND ABOVE
-                            actionButton = `<button class="btn-buy" style="border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="finalizeCashPay(${item.id})">FINISH PAY WITH CASH</button>`;
+                        if (currentRank === 1) { // SOCIO: 40% Aura cap only
+                            const auraCost = item.price * 0.40;
+                            priceDisplay = `40% AURA SECURE: $${auraCost.toFixed(2)}`;
+                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="processAuraAllocation(${item.id}, 0.40)">SECURE 40% WITH AURA</button>`;
+                        } else if (currentRank >= 2) { // SOLDATO+: Full layout access and cash completion
+                            actionButton = `<button class="btn-buy" style="border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="processCashFulfillment(${item.id}, 0.60)">FINALIZE 60% WITH CASH</button>`;
                         } else {
-                            actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">LOCKED</button>`;
+                            actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">LEVEL_LOCKED</button>`;
                         }
                         
                         return `
@@ -3216,14 +3187,14 @@ function finishLoadingBar() {
                                 </div>
                                 <div class="asset-label">
                                     <span>${item.name}</span>
-                                    <span style="color:var(--canary-yellow);">$${item.price.toFixed(2)}</span>
+                                    <span style="color:var(--canary-yellow);">${priceDisplay}</span>
                                 </div>
                                 ${actionButton}
                             </div>
                         `;
                     }).join('');
                 }
-                return; 
+                return;
             } 
             
             // -----------------------------------------------------------------
@@ -3233,7 +3204,7 @@ function finishLoadingBar() {
             {
                 pageBody += `
                 <div class="border px-3 py-2 mb-4 text-xs" style="border: 1px solid var(--master-blue); background: rgba(0,229,255,0.04); color: var(--master-blue); padding: 10px; font-size: 11px; margin-bottom: 20px;">
-                    [SANCTUM_STREAM] // ${currentRank === 3 ? 'CAPO: SECURE PARTIAL REQUISITION VIA AURA' : 'PATRON: COMPLETE REQUISITION VIA CASH'}
+                    [SANCTUM_PROTOCOL] // SECURE VAULT ACCESS
                 </div>
                 <div class="merch-grid" id="sanctum-grid"></div>`;
                 
@@ -3244,13 +3215,16 @@ function finishLoadingBar() {
                 if (sanctumGrid) {
                     sanctumGrid.innerHTML = sanctumAssets.map(item => {
                         let actionButton = '';
+                        let priceDisplay = `$${item.price.toFixed(2)}`;
                         
-                        if (currentRank === 3) { // CAPO TIER
-                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="initializeAuraPartialPay(${item.id})">PARTIAL PAY WITH AURA</button>`;
-                        } else if (currentRank >= 4) { // PATRON TIER
-                            actionButton = `<button class="btn-buy" style="border-color: var(--master-blue); color: var(--master-blue);" onclick="finalizeCashPay(${item.id})">FINISH PAY WITH CASH</button>`;
+                        if (currentRank === 3) { // CAPO: Same rules as Socio in Archive (40% Aura lock)
+                            const auraCost = item.price * 0.40;
+                            priceDisplay = `40% AURA SECURE: $${auraCost.toFixed(2)}`;
+                            actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="processAuraAllocation(${item.id}, 0.40)">SECURE 40% WITH AURA</button>`;
+                        } else if (currentRank >= 4) { // PATRON: Unlock settlement clearance
+                            actionButton = `<button class="btn-buy" style="border-color: var(--master-blue); color: var(--master-blue);" onclick="processCashFulfillment(${item.id}, 0.60)">FINALIZE 60% WITH CASH</button>`;
                         } else {
-                            actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">LOCKED</button>`;
+                            actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">CLASSIFIED_LOCKED</button>`;
                         }
                         
                         return `
@@ -3261,14 +3235,14 @@ function finishLoadingBar() {
                                 </div>
                                 <div class="asset-label">
                                     <span>${item.name}</span>
-                                    <span style="color:var(--master-blue);">$${item.price.toFixed(2)}</span>
+                                    <span style="color:var(--master-blue);">${priceDisplay}</span>
                                 </div>
                                 ${actionButton}
                             </div>
                         `;
                     }).join('');
                 }
-                return; 
+                return;
             }
             
             // -----------------------------------------------------------------
