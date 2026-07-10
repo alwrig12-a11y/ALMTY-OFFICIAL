@@ -1,21 +1,15 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Your secure web client terminal configuration keys
 const firebaseConfig = {
-  apiKey: "AIzaSyAT6dvq5xRZR2wFNAJymx5Pxk9DAhsAGHo",
-  authDomain: "almty-b34e9.firebaseapp.com",
-  projectId: "almty-b34e9",
-  storageBucket: "almty-b34e9.firebasestorage.app",
-  messagingSenderId: "368119145618",
-  appId: "1:368119145618:web:94f9ffd2e6fdad4ab5324b",
-  measurementId: "G-PMX5RPN65Y"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Singleton initialization pattern to prevent hot-reloading code instantiation errors
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+
+export { app, auth };
