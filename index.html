@@ -1524,7 +1524,7 @@
         <button onclick="openSocioLedger()">VIEW_WAITLIST_LEDGER</button>
         <button onclick="adjustInventory()">MANAGE_ASSETS</button>
     </div>
-</div>
+    </div>
     <script>
         // THE ALMTY NODE ROUTER
     const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -1551,6 +1551,22 @@
         let signupPhase = 'id'; // Tracks the 3 steps: 'id' -> 'email' -> 'passkey'
         let signupBuffer = { username: '', email: '', password: '' }; // Stores data between phases
         let signupData = { username: '', email: '', password: '' }; // The "Memory Buffer" for new Patrons
+
+        // Map roles to Aura Tier levels according to the ALMTY Spec
+        const rankTierMap = {
+        'GHOST': 0,   // 0 Aura
+        'SOCIO': 1,   // 0 - 999 Aura
+        'SOLDATO': 2, // 1,000 - 3,499 Aura
+        'CAPO': 3,    // 3,500 - 7,999 Aura
+        'PATRON': 4,  // 8,000+ Aura
+        'OVERSEER': 5 // Admin Override
+        };
+
+        function getCurrentRankLevel() {
+        const role = sessionStorage.getItem('almty_role') || 'SOCIO';
+        return rankTierMap[role] !== undefined ? rankTierMap[role] : 1;
+        }
+
         /** * Local Storage Hydration & Session State
          */
         let stashStream = JSON.parse(localStorage.getItem('stashStream')) || [];
@@ -3114,37 +3130,43 @@ async function verifyHemCode()
             loadPage('checkout');
         }
         
-         function loadPage(page)
-        {
-            const view = document.getElementById('main-view');
-            if (!view) return;
+    function loadPage(page)
+{
+    const view = document.getElementById('main-view');
+    if (!view) return;
 
-            // Manage visual state of sidebar links
-            document.querySelectorAll('.file-link').forEach(link => link.classList.remove('active'));
-            const activeLink = document.getElementById(`nav-${page}`);
-            if(activeLink) activeLink.classList.add('active');
+    const currentRole = sessionStorage.getItem('almty_role') || 'SOCIO';
+    const currentRank = rankTierMap[currentRole] !== undefined ? rankTierMap[currentRole] : 1;
 
-            // Prevent patrons from accessing master pages via console injection
-            if (page.startsWith('master_') && !isMasterOverseer)
-            {
-                view.innerHTML = `<div style="color:var(--alert-red); font-size:24px; font-weight:bold; font-family:'Black Ops One';">[FATAL_ERROR]: CLEARANCE_LEVEL_INSUFFICIENT.</div>`;
-                return;
-            }
+    // Manage visual state of sidebar links
+    document.querySelectorAll('.file-link').forEach(link => link.classList.remove('active'));
+    const activeLink = document.getElementById(`nav-${page}`);
+    if(activeLink) activeLink.classList.add('active');
 
-            // --- ALMTY BRAND RANK ARCHITECTURE LOGIC GATES ---
-            let accessLocked = false;
-            let requiredRankName = "";
-            let lockColor = "var(--alert-red)";
+    // Security Gate: Prevent Non-Overseers from accessing Master Dashboard
+    if (page.startsWith('master_') && !isMasterOverseer)
+    {
+        view.innerHTML = `<div style="color:var(--alert-red); font-size:24px; font-weight:bold; font-family:'Black Ops One';">[FATAL_ERROR]: CLEARANCE_LEVEL_INSUFFICIENT.</div>`;
+        return;
+    }
 
-            if (page === 'archive' && currentRank < 1) { // Socio (Rank 1) can now pass into Archive
-                accessLocked = true;
-                requiredRankName = "SOCIO (TIER 1)";
-                lockColor = "var(--socio-green)"; 
-            } else if (page === 'sanctum' && currentRank < 3) { // Requires CAPO to view/claim
-                accessLocked = true;
-                requiredRankName = "CAPO (TIER 3)";
-                lockColor = "var(--master-blue)"; 
-            }
+    // --- STOREFRONT CLEARANCE GATE EVALUATION ---
+    let accessLocked = false;
+    let requiredRankName = "";
+    let lockColor = "var(--alert-red)";
+
+    // 1. ARCHIVE GATE: Requires SOCIO (Tier 1) for 40% Reservation access, SOLDATO (Tier 2) for Full Unblurred Purchase Access
+    if (page === 'archive' && currentRank < 1) {
+        accessLocked = true;
+        requiredRankName = "SOCIO (TIER 1)";
+        lockColor = "var(--socio-green)"; 
+    } 
+    // 2. SANCTUM GATE: Completely BLOCKED for Ghost, Socio, and Soldato. Requires CAPO (Tier 3) or PATRON (Tier 4)
+    else if (page === 'sanctum' && currentRank < 3) {
+        accessLocked = true;
+        requiredRankName = "CAPO (TIER 3)";
+        lockColor = "var(--master-blue)"; 
+    }
 
             let pageBody = `
                 <div class="section-header">
@@ -3227,11 +3249,12 @@ async function verifyHemCode()
                         let actionButton = '';
                         let priceDisplay = `$${item.price.toFixed(2)}`;
                         
-                        if (currentRank === 1) { // SOCIO: 40% Aura cap only
+                        // Ensure button rendering checks the live tier:
+                        if (currentRank === 1) { // SOCIO (Tier 1): 40% Aura Reservation
                             const auraCost = item.price * 0.40;
                             priceDisplay = `40% AURA SECURE: $${auraCost.toFixed(2)}`;
                             actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="processAuraAllocation(${item.id}, 0.40)">SECURE 40% WITH AURA</button>`;
-                        } else if (currentRank >= 2) { // SOLDATO+: Full layout access and cash completion
+                        } else if (currentRank >= 2) { // SOLDATO (Tier 2+): Full Cash Settlement Unlocked
                             actionButton = `<button class="btn-buy" style="border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="processCashFulfillment(${item.id}, 0.60)">FINALIZE 60% WITH CASH</button>`;
                         } else {
                             actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">LEVEL_LOCKED</button>`;
@@ -3275,11 +3298,12 @@ async function verifyHemCode()
                         let actionButton = '';
                         let priceDisplay = `$${item.price.toFixed(2)}`;
                         
-                        if (currentRank === 3) { // CAPO: Same rules as Socio in Archive (40% Aura lock)
+                        // Ensure button rendering checks the live tier:
+                        if (currentRank === 3) { // CAPO (Tier 3): 40% Aura Reservation
                             const auraCost = item.price * 0.40;
                             priceDisplay = `40% AURA SECURE: $${auraCost.toFixed(2)}`;
                             actionButton = `<button class="btn-buy" style="border-color: var(--socio-green); color: var(--socio-green);" onclick="processAuraAllocation(${item.id}, 0.40)">SECURE 40% WITH AURA</button>`;
-                        } else if (currentRank >= 4) { // PATRON: Unlock settlement clearance
+                        } else if (currentRank >= 4) { // PATRON (Tier 4): Full Cash Settlement Unlocked
                             actionButton = `<button class="btn-buy" style="border-color: var(--master-blue); color: var(--master-blue);" onclick="processCashFulfillment(${item.id}, 0.60)">FINALIZE 60% WITH CASH</button>`;
                         } else {
                             actionButton = `<button class="btn-buy" disabled style="color: var(--dim-text);">CLASSIFIED_LOCKED</button>`;
