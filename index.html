@@ -14,6 +14,22 @@
         href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=JetBrains+Mono:wght@300;700&display=swap" 
         rel="stylesheet"
     >
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <script>
+      // Initialize Firebase Client
+      const firebaseConfig = {
+        apiKey: "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCz4AC7KGyYADJm\nxFDEPJKB0Zbl2qWBwYMzlywxhmmpKmR3M9lYzQU6aWwYY6c4pdVsw04E3q1fHu7Y\nQ1WG0Dobs7vRFlGsjylxyPQfyPodHfAhEBBhz6ZuKS1U3Rhvve71jnQ4kJphuBvK\n3IOgX1CGSHEOu/SRmmlaHLO8jnL16H6ldB5CZ66lROEDW6PBZRMq6N+PCQ8/TOka\n/AUF6tTPtBW0WpU/OsVx+1FFAX8rcnI4a0pH38oMtpgZyP26JeORoaR/QuUeLzMS\nikkmZX1F7S2sYGjfosk8LSEy5CJ71r11BAS8CLRSPReRJS3R7/jzoqCekQBRNRTY\n4XEiJjBnAgMBAAECggEAD6F0js75eM/zkUiX+CWHWa6b3Ud9wGPPgekuFvOmNOQR\nLOadiYDvZl8I3Km0O1D11ei22+d5y11Fxhc71GY91nBs7sNwv30FTfT3edeeHG+g\nkU7zDXzc6o+7d7dqyzMHE+GYKd4u/DTifWNiMMp3leOvp2cf3pM7enAqEkWSqdmv\n84yOG+QkNIKvoPRCqV2wEyZG1TZHC0LodJgpx0kSXJoY7JUQHxulQRgfc3y8sHXc\nlNt2BM4X1RTf1m2OtjwqbvE0z8UtS1uK2LHKNLlGdMiEPWL574R2hlQ30wP+H5Rq\nMNcGunY5ITQ1VxERez+zU5DQEIyipysdv5HsKul1IQKBgQDZIHHNjD2aiIqyfE+n\nUwOtR9zOyq00nHjG/TMAlP9yKwb4fW6xA9jFGPcmr2Sy40wzzn5POokqbFG2Uvv8\nAGwxhIM8HTiz0mXNtSoyvTmXVTttdNsQx50FA7L6HwR8+uowqE+/LWCOlgWGO2ys\nG+NMI7DQi1I8vrGXTpthXyXLUQKBgQDUFDPSjph5w4DFq94Eig4VKTNxqTP4ajEP\nqd807H+bYxIv1sUzkGWgTDAmSV2thqcHUMu404aDbxhgtORrmJn5eYN4Ywd+GDCB\nifBXkVYwjrNpu/BcEoU/ZczP3F3R2GA4l/dQaeN1AsarZPxncfCCaS3AAtntnGnT\nowMM5GriNwKBgQCkobEohZmAPt/Lje5nlM5I6SBHu+2w4qPBXeL6If++dVmHuLPh\njGUkrVVZA8x6x1XUQlILiPrQK+mZMTrXTQq8URmgzxdbYcDHRQKGDmxIjtvMlroz\n8ubgEnn2pOYmTaqc0kIFV0bLVn1B1nUD2vFxne5Hchwc6wqFC5lNL3PcwQKBgQDL\n+354yBSaEVO7TPqnjQ3MhqtnaGKHTcRQl4gLxGlcUKb+gml8lidZTc6GFMzYiYn/\n/FNmO3XG10UwRuzpHIcEsD6mvUFIpAWLotwbrbujyq2ARncCaAHnn4emagOHQcIS\nzP/gRWi0c+4YjnJDIRE+reGGLHfmFiqnl8PoU48GcwKBgQCQX5nGcVVg/tm7MmjK\nrmvTktK8176CPj+t4HTJrlVb9dRmAv6+yO0x+z7g6jmJiDfBSEaeD2vkZyBEzg5t\nTKbOQluvyOGrS0wCav8OSfaM6C+DyyaX0RtTI4kGuWtXuRpmeft+V7hYUWaExu3B\nYFcrmcYJg90bIWnwZE5gpMNvUA==\n-----END PRIVATE KEY-----\n", // Replace with your web API key from Firebase Console
+        authDomain: "almty-b34e9.firebaseapp.com",
+        projectId: "almty-b34e9"
+      };
+
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+    </script>
+
     <style>
         /* ========================================================================
            ROOT VARIABLES & GLOBAL RESETS
@@ -1962,9 +1978,9 @@ function resetGateway() {
             reEnableUserPhase();
         }
     });
-/**
+    /**
  * [PROTOCOL]: UNIFIED_GATEWAY_HANDSHAKE
- * Handles both Waitlist Enrollment and Overseer Login
+ * Handles Firebase Authentication & Render Node Session Sync
  */
 keyInput.addEventListener('keydown', async (e) => {
     if (e.key !== 'Enter') return;
@@ -1992,12 +2008,8 @@ keyInput.addEventListener('keydown', async (e) => {
             signupPhase = 'passkey';
             keyPrompt.innerText = "SET_SECURE_PASSKEY:";
             keyInput.type = "password";
-            
-            // FIX: Only clear the bottom row (email -> passkey)
             keyInput.value = "";
             keyDisplay.innerText = ""; 
-            
-            // Notice: The lines clearing userInput and userDisplay have been completely removed!
 
             statusDisplay.innerText = ">> STATUS: ENTER_VAULT_PASSKEY... <<";
             statusDisplay.style.color = "var(--canary-yellow)";
@@ -2007,99 +2019,98 @@ keyInput.addEventListener('keydown', async (e) => {
         if (signupPhase === 'passkey') {
             signupData.password = keyInput.value.trim();
 
-            let assignedRole = 'SOCIO';
-            let assignedStatus = 'active';
-
-            if (signupData.username === 'almty') {
-                assignedRole = 'OVERSEER';
-                assignedStatus = 'active';
-            } else if (signupData.username === 'demo patron') {
-                assignedRole = 'PATRON';
-                assignedStatus = 'active';
-            }
-
             statusDisplay.innerText = ">> STATUS: EVOLVING_IDENTITY... <<";
             startLoadingBar();
 
             try {
-                const response = await fetch(`${API_URL}/api/users/register`, {
+                // 1. Authenticate / Create user via Firebase Client SDK
+                const userCredential = await firebase.auth().createUserWithEmailAndPassword(signupData.email, signupData.password);
+                const idToken = await userCredential.user.getIdToken();
+
+                // 2. Sync session with updated Render MongoDB backend
+                const response = await fetch(`${API_URL}/api/users/sync-session`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    },
                     body: JSON.stringify({
-                        username: signupData.username,
-                        email: signupData.email,
-                        password: signupData.password,
-                        role: assignedRole,
-                        status: assignedStatus
+                        username: signupData.username
                     })
                 });
 
+                const data = await response.json();
+
                 if (response.ok) {
-                    statusDisplay.innerText = `>> SUCCESS: ${assignedRole}_IDENTITY_SYNCED. <<`;
+                    sessionStorage.setItem('almty_token', idToken);
+                    statusDisplay.innerText = `>> SUCCESS: ${data.role}_IDENTITY_SYNCED. <<`;
                     setTimeout(() => toggleSignup(), 3000);
                 } else {
-                    const data = await response.json();
                     statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
                 }
             } catch (err) {
-                statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (COLD_START) <<";
+                console.error("Firebase Sign-Up Error:", err);
+                statusDisplay.innerText = `>> ERROR: ${err.message.toUpperCase()} <<`;
             } finally {
                 finishLoadingBar();
             }
         }
     } else {
-        const username = userInput.value.toLowerCase().trim();
+        // --- LOGIN MODE ---
+        const userOrEmail = userInput.value.toLowerCase().trim();
         const password = keyInput.value.trim();
 
         try {
             startLoadingBar();
             statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
 
-            const response = await fetch(`${API_URL}/api/users/login`, {
+            // 1. Log in via Firebase Client SDK
+            const userCredential = await firebase.auth().signInWithEmailAndPassword(userOrEmail, password);
+            const idToken = await userCredential.user.getIdToken();
+
+            // 2. Fetch user profile from Render backend via /sync-session
+            const response = await fetch(`${API_URL}/api/users/sync-session`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                }
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                        sessionStorage.setItem('almty_token', data.token);
-                        sessionStorage.setItem('almty_role', data.role);
-                        isMasterOverseer = (data.role === 'OVERSEER');
-                        
-                        if (isMasterOverseer) {
-                            sessionStorage.setItem('is_master', 'true');
-                            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
-                            setTimeout(() => { executeEntry(username); }, 1500);
-                            return;
-                        }
+                sessionStorage.setItem('almty_token', idToken);
+                sessionStorage.setItem('almty_role', data.role);
+                sessionStorage.setItem('current_user', data.username);
+                isMasterOverseer = (data.role === 'OVERSEER');
+                
+                if (isMasterOverseer) {
+                    sessionStorage.setItem('is_master', 'true');
+                    statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+                    setTimeout(() => { executeEntry(data.username); }, 1500);
+                    return;
+                }
 
-                        statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
-                        statusDisplay.style.color = "var(--socio-green)";
+                statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
+                statusDisplay.style.color = "var(--socio-green)";
 
-                        setTimeout(() => {
-                            // CONDITION: Check if this is explicitly the demo showcase account
-                            if (username === 'demo patron') {
-                                initiateOnboardingSequence(username);
-                            } 
-                            // CONDITION: For real members, only show onboarding if they haven't completed their profile
-                            else if (!data.hasCompletedProfile) {
-                                initiateOnboardingSequence(username);
-                            } 
-                            // CONDITION: Real member who has already set up their profile skips straight to the site
-                            else {
-                                executeEntry(username);
-                            }
-                        }, 1500);
-
+                setTimeout(() => {
+                    if (data.username === 'demo patron' || !data.hasCompletedProfile) {
+                        initiateOnboardingSequence(data.username);
                     } else {
-                statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
+                        executeEntry(data.username);
+                    }
+                }, 1500);
+
+            } else {
+                statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
                 statusDisplay.style.color = "var(--alert-red)";
             }
         } catch (error) {
-            statusDisplay.innerText = ">> ERROR: VAULT_OFFLINE (CHECK_NETWORK) <<";
-            console.error("Connection Error:", error);
+            statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
+            statusDisplay.style.color = "var(--alert-red)";
+            console.error("Connection/Auth Error:", error);
         } finally {
             finishLoadingBar();
         }
