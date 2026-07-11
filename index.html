@@ -2059,6 +2059,16 @@ keyInput.addEventListener('keydown', async (e) => {
         // --- LOGIN MODE ---
         const userOrEmail = userInput.value.toLowerCase().trim();
         const password = keyInput.value.trim();
+        
+        // Ensure userOrEmail is a vaild email format before hadning to Firebase
+        let loginEmail = userOrEmail;
+        if (!userOrEmail.includes('@')) {
+            // If you want usernames mapped to a domain, or prmpt for email:
+            statusDisplay.innerText = ">> ERROR: ENTER_VALID_COMM_LINK (EMAIL) <<";
+            statusDisplay.style.color = "var(--alert-red)";
+            finishLoadingBar();
+            return;
+        }
 
         try {
             startLoadingBar();
