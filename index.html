@@ -2056,74 +2056,68 @@ keyInput.addEventListener('keydown', async (e) => {
             }
         }
     } else {
-        // --- LOGIN MODE ---
-        const userOrEmail = userInput.value.toLowerCase().trim();
-        const password = keyInput.value.trim();
+       // --- LOGIN MODE ---
+const userOrEmail = userInput.value.toLowerCase().trim();
+const password = keyInput.value.trim();
+
+try {
+    startLoadingBar();
+    statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
+
+    // 1. Log in via Firebase Client SDK
+    const userCredential = await firebase.auth().signInWithEmailAndPassword(userOrEmail, password);
+    const idToken = await userCredential.user.getIdToken();
+
+    // 2. Fetch or initialize user profile from Render backend via /sync-session
+    const response = await fetch(`${API_URL}/api/users/sync-session`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+        },
+        // 🛠️ FIX: Pass the username input so Render can auto-create the MongoDB dossier if missing!
+        body: JSON.stringify({
+            username: userOrEmail.includes('@') ? userOrEmail.split('@')[0] : userOrEmail
+        })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+        sessionStorage.setItem('almty_token', idToken);
+        sessionStorage.setItem('almty_role', data.role);
+        sessionStorage.setItem('current_user', data.username);
+        isMasterOverseer = (data.role === 'OVERSEER');
         
-        // Ensure userOrEmail is a vaild email format before hadning to Firebase
-        let loginEmail = userOrEmail;
-        if (!userOrEmail.includes('@')) {
-            // If you want usernames mapped to a domain, or prmpt for email:
-            statusDisplay.innerText = ">> ERROR: ENTER_VALID_COMM_LINK (EMAIL) <<";
-            statusDisplay.style.color = "var(--alert-red)";
-            finishLoadingBar();
+        if (isMasterOverseer) {
+            sessionStorage.setItem('is_master', 'true');
+            statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+            setTimeout(() => { executeEntry(data.username); }, 1500);
             return;
         }
 
-        try {
-            startLoadingBar();
-            statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
+        statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
+        statusDisplay.style.color = "var(--socio-green)";
 
-            // 1. Log in via Firebase Client SDK
-            const userCredential = await firebase.auth().signInWithEmailAndPassword(userOrEmail, password);
-            const idToken = await userCredential.user.getIdToken();
-
-            // 2. Fetch user profile from Render backend via /sync-session
-            const response = await fetch(`${API_URL}/api/users/sync-session`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                }
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                sessionStorage.setItem('almty_token', idToken);
-                sessionStorage.setItem('almty_role', data.role);
-                sessionStorage.setItem('current_user', data.username);
-                isMasterOverseer = (data.role === 'OVERSEER');
-                
-                if (isMasterOverseer) {
-                    sessionStorage.setItem('is_master', 'true');
-                    statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
-                    setTimeout(() => { executeEntry(data.username); }, 1500);
-                    return;
-                }
-
-                statusDisplay.innerText = `>> ACCESS_GRANTED: IDENTITY_VERIFIED <<`;
-                statusDisplay.style.color = "var(--socio-green)";
-
-                setTimeout(() => {
-                    if (data.username === 'demo patron' || !data.hasCompletedProfile) {
-                        initiateOnboardingSequence(data.username);
-                    } else {
-                        executeEntry(data.username);
-                    }
-                }, 1500);
-
+        setTimeout(() => {
+            if (data.username === 'demo patron' || !data.hasCompletedProfile) {
+                initiateOnboardingSequence(data.username);
             } else {
-                statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
-                statusDisplay.style.color = "var(--alert-red)";
+                executeEntry(data.username);
             }
-        } catch (error) {
-            statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
-            statusDisplay.style.color = "var(--alert-red)";
-            console.error("Connection/Auth Error:", error);
-        } finally {
-            finishLoadingBar();
-        }
+        }, 1500);
+
+    } else {
+        statusDisplay.innerText = `>> ERROR: ${data.message.toUpperCase()} <<`;
+        statusDisplay.style.color = "var(--alert-red)";
+    }
+} catch (error) {
+    statusDisplay.innerText = ">> ERROR: INVALID_CREDENTIALS <<";
+    statusDisplay.style.color = "var(--alert-red)";
+    console.error("Connection/Auth Error:", error);
+} finally {
+    finishLoadingBar();
+}
     }
 });
 
