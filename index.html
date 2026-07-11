@@ -29,7 +29,7 @@
         firebase.initializeApp(firebaseConfig);
       }
     </script>
-    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://js.stripe.com/v3/?advanced=true"></script>
     <style>
         /* ========================================================================
            ROOT VARIABLES & GLOBAL RESETS
@@ -3695,8 +3695,8 @@ function finishLoadingBar() {
             }
         }
         
-        let stripeInstance;
-        let checkoutElements;
+let stripeInstance;
+let paymentElement;
 
 async function initializeStripePayment() {
     const btnInit = document.getElementById('btn-initiate-stripe');
@@ -3707,7 +3707,7 @@ async function initializeStripePayment() {
     try {
         const token = sessionStorage.getItem('almty_token');
 
-        // 1. Fetch Client Secret from Render Backend
+        // 1. Request Checkout Session Client Secret from Render Backend
         const response = await fetch(`${API_URL}/api/checkout/create-checkout-session`, {
             method: 'POST',
             headers: {
@@ -3716,7 +3716,7 @@ async function initializeStripePayment() {
             },
             body: JSON.stringify({
                 items: stashStream,
-                auraRedeemed: 0 // Can be wired to user Aura input
+                auraRedeemed: 0
             })
         });
 
@@ -3726,14 +3726,17 @@ async function initializeStripePayment() {
             throw new Error(data.message || 'SETTLEMENT_FAILED');
         }
 
-        // 2. Initialize Stripe.js and Payment Element
-        stripeInstance = Stripe('pk_live_51TlundEFDJaK4BasgZexKFyVdkRMh8yHKm08gkZvu1UlkPJ1Hq7uCeEpipjUvnC7DaUJ8alr1m87WGjObQZTGnRm00HPKU6JHY'); // Replace with your Publishable Key
-        checkoutElements = await stripeInstance.initCheckoutElementsSdk({ clientSecret: data.clientSecret });
+        // 2. Initialize Stripe with your Publishable Key
+        stripeInstance = Stripe('pk_test_YOUR_STRIPE_PUBLISHABLE_KEY'); // Replace with your key
 
-        const paymentElement = checkoutElements.createPaymentElement();
-        paymentElement.mount("#payment-element");
+        // 3. Mount Payment Element directly using clientSecret
+        const elements = stripeInstance.elements({ clientSecret: data.clientSecret });
+        paymentElement = elements.create('payment');
+        paymentElement.mount('#payment-element');
 
-        // Reveal the final pay button
+        // Store elements instance on global object for submission
+        window.stripeElementsInstance = elements;
+
         document.getElementById('btn-pay-stripe').style.display = 'block';
         btnInit.style.display = 'none';
 
@@ -3751,9 +3754,12 @@ async function submitStripePayment() {
     btnPay.disabled = true;
 
     try {
-        const loadActionsResult = await checkoutElements.loadActions();
-        const actions = loadActionsResult.actions;
-        const error = await actions.confirm();
+        const { error } = await stripeInstance.confirmPayment({
+            elements: window.stripeElementsInstance,
+            confirmParams: {
+                return_url: `${window.location.origin}/?session_id=success`,
+            },
+        });
 
         if (error) {
             document.getElementById('payment-message').innerText = `>> ERROR: ${error.message.toUpperCase()} <<`;
