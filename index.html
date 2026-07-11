@@ -2330,34 +2330,77 @@ function finishLoadingBar() {
         });
 
         /**
-         * Validates the 19-character structural requirement of the Hem Code.
-         */
-        function verifyHemCode() 
-        {
-            const input = document.getElementById('hem-code-input');
-            const resultDiv = document.getElementById('hem-verification-result');
-            
-            if (!input || !resultDiv) return;
+ * [PROTOCOL]: VERIFY_HEM_CODE
+ * Sends the input code to Render to validate against MongoDB Marriage Log
+ */
+async function verifyHemCode() 
+{
+    const input = document.getElementById('hem-code-input');
+    const resultDiv = document.getElementById('hem-verification-result');
+    
+    if (!input || !resultDiv) return;
 
-            if (input.value.length === 19) 
-            {
-                resultDiv.style.color = "var(--socio-green)";
-                resultDiv.innerText = "[PROTOCOL_SYNC]: HEM_CODE_VERIFIED. ASSET_AUTHENTICATED.";
-                resultDiv.style.display = "block";
-                input.style.borderColor = "var(--socio-green)";
-                
-                setTimeout(() => { input.style.borderColor = "var(--accent)"; }, 2000);
-            } 
-            else 
-            {
-                resultDiv.style.color = "var(--alert-red)";
-                resultDiv.innerText = "[PROTOCOL_ERROR]: INVALID_HEM_CODE_LENGTH. CHECK_GARMENT.";
-                resultDiv.style.display = "block";
-                input.style.borderColor = "var(--alert-red)";
-                
-                setTimeout(() => { input.style.borderColor = "var(--accent)"; }, 2000);
-            }
+    const keyEntered = input.value.trim();
+
+    if (!keyEntered) {
+        resultDiv.style.color = "var(--alert-red)";
+        resultDiv.innerText = "[PROTOCOL_ERROR]: CLEARANCE_KEY_REQUIRED.";
+        resultDiv.style.display = "block";
+        return;
+    }
+
+    resultDiv.style.color = "var(--canary-yellow)";
+    resultDiv.innerText = "[SYSTEM]: INITIATING_DUAL_LAYER_HANDSHAKE...";
+    resultDiv.style.display = "block";
+
+    try {
+        const token = sessionStorage.getItem('almty_token');
+
+        // Send validation request to your Render backend node
+        const response = await fetch(`${API_URL}/api/handshake/verify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                // Accepts 4-digit Hem Keys or 19-character Hem Codes
+                hemKey: keyEntered,
+                serialId: keyEntered.length === 19 ? keyEntered : "AL-26-0001" 
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            resultDiv.style.color = "var(--socio-green)";
+            resultDiv.innerText = `[PROTOCOL_SYNC]: ${data.message}. +${data.respetoAwarded} RESPETO ADDED. NEW RANK: ${data.newRole}`;
+            input.style.borderColor = "var(--socio-green)";
+            
+            // Update HUD Stats in real-time
+            const respetoDisp = document.getElementById('respeto-disp');
+            const rankDisp = document.getElementById('rank-disp');
+            
+            if (respetoDisp) respetoDisp.innerText = data.respetoAwarded;
+            if (rankDisp) rankDisp.innerText = data.newRole;
+
+            setTimeout(() => { input.style.borderColor = "var(--accent)"; }, 2000);
+        } else {
+            resultDiv.style.color = "var(--alert-red)";
+            resultDiv.innerText = `[PROTOCOL_ERROR]: ${data.message.toUpperCase()}`;
+            input.style.borderColor = "var(--alert-red)";
+
+            setTimeout(() => { input.style.borderColor = "var(--accent)"; }, 2000);
         }
+    } catch (err) {
+        console.error("Handshake Execution Error:", err);
+        resultDiv.style.color = "var(--alert-red)";
+        resultDiv.innerText = "[PROTOCOL_ERROR]: HANDSHAKE_OFFLINE (CHECK_NETWORK)";
+        input.style.borderColor = "var(--alert-red)";
+
+        setTimeout(() => { input.style.borderColor = "var(--accent)"; }, 2000);
+    }
+}
 
         /**
          * Controls visual toggle state for body geometry options.
