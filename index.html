@@ -29,7 +29,7 @@
         firebase.initializeApp(firebaseConfig);
       }
     </script>
-
+    <script src="https://js.stripe.com/v3/"></script>
     <style>
         /* ========================================================================
            ROOT VARIABLES & GLOBAL RESETS
@@ -3299,59 +3299,35 @@ function finishLoadingBar() {
             // -----------------------------------------------------------------
             // ROUTE: CHECKOUT
             // -----------------------------------------------------------------
-            else if (page === 'checkout') 
-            {
-                const total = stashStream.reduce((sum, item) => sum + item.price, 0);
-                
-                pageBody += `
-                <div class="checkout-grid">
-                    <div class="checkout-section">
-                        <div class="checkout-header">01 // LOGISTICS_AND_PROVISIONING</div>
-                        <div class="checkout-input-group">
-                            <label>Full Name</label>
-                            <input type="text" class="checkout-input" placeholder="PATRON NAME">
-                        </div>
-                        <div class="checkout-input-group">
-                            <label>Street Address</label>
-                            <input type="text" class="checkout-input" placeholder="NODE LOCATION">
-                        </div>
-                        <div class="checkout-row">
-                            <div class="checkout-input-group">
-                                <label>City</label>
-                                <input type="text" class="checkout-input" placeholder="CITY">
-                            </div>
-                            <div class="checkout-input-group">
-                                <label>ZIP</label>
-                                <input type="text" class="checkout-input" placeholder="CODE">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="checkout-section">
-                        <div class="checkout-header">02 // FINANCIAL_SETTLEMENT</div>
-                        <div class="checkout-input-group">
-                            <label>Card Number</label>
-                            <input type="text" class="checkout-input" placeholder="XXXX XXXX XXXX XXXX">
-                        </div>
-                        <div class="checkout-row">
-                            <div class="checkout-input-group">
-                                <label>Expiry</label>
-                                <input type="text" class="checkout-input" placeholder="MM/YY">
-                            </div>
-                            <div class="checkout-input-group">
-                                <label>CVV</label>
-                                <input type="password" class="checkout-input" placeholder="***">
-                            </div>
-                        </div>
-                        <div style="margin-top:20px; text-align:right;">
-                            <div style="font-size:10px; color:#444; margin-bottom:10px;">AUTHORIZED_TOTAL: $${total.toFixed(2)}</div>
-                            <button class="btn-buy" style="border-color:var(--socio-green); color:var(--socio-green);" onclick="executeHandshake()">
-                                EXECUTE_HANDSHAKE
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-            } 
+             else if (page === 'checkout') 
+{
+    const total = stashStream.reduce((sum, item) => sum + item.price, 0);
+
+    pageBody += `
+    <div class="checkout-grid">
+        <div class="checkout-section">
+            <div class="checkout-header">01 // REQUISITION_SUMMARY</div>
+            <div style="font-size: 11px; color: var(--dim-text); margin-bottom: 15px;">
+                TOTAL_STASH_ITEMS: ${stashStream.length}
+            </div>
+            <div style="font-size: 14px; color: var(--socio-green); font-weight: bold; margin-bottom: 20px;">
+                AUTHORIZED_FLOOR_TOTAL: $${total.toFixed(2)}
+            </div>
+            <button class="btn-buy" id="btn-initiate-stripe" style="border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="initializeStripePayment()">
+                INITIALIZE_SECURE_PAYMENT_NODE
+            </button>
+        </div>
+        
+        <div class="checkout-section">
+            <div class="checkout-header">02 // FINANCIAL_SETTLEMENT (STRIPE)</div>
+            <div id="payment-element" style="margin-bottom: 20px;"></div>
+            <div id="payment-message" style="color: var(--alert-red); font-size: 10px; margin-bottom: 10px;"></div>
+            <button class="btn-buy" id="btn-pay-stripe" style="display: none; border-color: var(--socio-green); color: var(--socio-green);" onclick="submitStripePayment()">
+                EXECUTE_HANDSHAKE_SETTLEMENT
+            </button>
+        </div>
+    </div>`;
+}
             
             // -----------------------------------------------------------------
             // ROUTE: THE LEDGER
@@ -3718,6 +3694,78 @@ function finishLoadingBar() {
                 executeEntry(username);
             }
         }
+        
+        let stripeInstance;
+        let checkoutElements;
+
+async function initializeStripePayment() {
+    const btnInit = document.getElementById('btn-initiate-stripe');
+    const msgDiv = document.getElementById('payment-message');
+    btnInit.innerText = 'PROVISIONING_SETTLEMENT_NODE...';
+    btnInit.disabled = true;
+
+    try {
+        const token = sessionStorage.getItem('almty_token');
+
+        // 1. Fetch Client Secret from Render Backend
+        const response = await fetch(`${API_URL}/api/checkout/create-checkout-session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                items: stashStream,
+                auraRedeemed: 0 // Can be wired to user Aura input
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'SETTLEMENT_FAILED');
+        }
+
+        // 2. Initialize Stripe.js and Payment Element
+        stripeInstance = Stripe('pk_live_51TlundEFDJaK4BasgZexKFyVdkRMh8yHKm08gkZvu1UlkPJ1Hq7uCeEpipjUvnC7DaUJ8alr1m87WGjObQZTGnRm00HPKU6JHY'); // Replace with your Publishable Key
+        checkoutElements = await stripeInstance.initCheckoutElementsSdk({ clientSecret: data.clientSecret });
+
+        const paymentElement = checkoutElements.createPaymentElement();
+        paymentElement.mount("#payment-element");
+
+        // Reveal the final pay button
+        document.getElementById('btn-pay-stripe').style.display = 'block';
+        btnInit.style.display = 'none';
+
+    } catch (err) {
+        console.error("Stripe Initialization Error:", err);
+        msgDiv.innerText = `>> ERROR: ${err.message.toUpperCase()} <<`;
+        btnInit.innerText = 'INITIALIZE_SECURE_PAYMENT_NODE';
+        btnInit.disabled = false;
+    }
+}
+
+async function submitStripePayment() {
+    const btnPay = document.getElementById('btn-pay-stripe');
+    btnPay.innerText = 'EXECUTING_SETTLEMENT...';
+    btnPay.disabled = true;
+
+    try {
+        const loadActionsResult = await checkoutElements.loadActions();
+        const actions = loadActionsResult.actions;
+        const error = await actions.confirm();
+
+        if (error) {
+            document.getElementById('payment-message').innerText = `>> ERROR: ${error.message.toUpperCase()} <<`;
+            btnPay.innerText = 'EXECUTE_HANDSHAKE_SETTLEMENT';
+            btnPay.disabled = false;
+        }
+    } catch (err) {
+        console.error("Payment Execution Error:", err);
+        btnPay.innerText = 'EXECUTE_HANDSHAKE_SETTLEMENT';
+        btnPay.disabled = false;
+    }
+}
     </script>
 </body>
 </html>
