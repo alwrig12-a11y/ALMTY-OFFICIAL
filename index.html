@@ -3727,7 +3727,7 @@ async function initializeStripePayment() {
         }
 
         // 2. Initialize Stripe with your Publishable Key
-        stripeInstance = Stripe('pk_test_YOUR_STRIPE_PUBLISHABLE_KEY'); // Replace with your key
+        stripeInstance = Stripe('pk_live_51TlundEFDJaK4BasgZexKFyVdkRMh8yHKm08gkZvu1UlkPJ1Hq7uCeEpipjUvnC7DaUJ8alr1m87WGjObQZTGnRm00HPKU6JHY'); // Replace with your key
 
         // 3. Mount Payment Element directly using clientSecret
         const elements = stripeInstance.elements({ clientSecret: data.clientSecret });
