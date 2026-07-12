@@ -122,13 +122,34 @@
             z-index: 9999; 
             display: flex; 
             flex-direction: column; 
-            justify-content: space-between; /* Keeps top logo, middle inputs, and bottom footer spaced out */
+            justify-content: space-between; /* Spacing between top logo, middle inputs, and footer */
             align-items: center; 
             transition: opacity 0.8s ease;
-            padding: 30px 20px 20px 20px; 
+            padding: 40px 20px; 
             text-align: center; 
             box-sizing: border-box;
-            overflow-y: auto; /* Enables smooth scrolling on smaller screens so nothing overlaps */
+            overflow-y: auto; /* Ensures smooth scrolling on small screens */
+        }
+
+        .gateway-button-trio 
+        {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 25px;
+            margin-bottom: 25px;
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .gateway-footer 
+        {
+            font-size: 8px; 
+            color: #555; 
+            text-align: center; 
+            width: 100%;
+            padding-top: 15px;
+            padding-bottom: 10px;
         }
 
         #logo-gateway 
@@ -1436,26 +1457,26 @@
             </div>
         </div>
         
-        <div class="gateway-button-trio" style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px; width: 100%; max-width: 320px;">
+    <div class="gateway-button-trio">
             <button class="btn-signup" id="signup-toggle" onclick="toggleSignup()">
                 1. CREATE_ACCOUNT (REQUEST_ACCESS)
             </button>
-            <button class="btn-signup" onclick="triggerPasswordReset()">
+
+            <button class="btn-signup" id="forgot-pass-btn" onclick="triggerPasswordReset()">
                 2. FORGOT_PASSWORD
             </button>
-            <button class="btn-signup" style="border-color: var(--dim-text); color: var(--dim-text);" onclick="enterAsGhost()">
+
+            <button class="btn-signup" id="ghost-access-btn" style="border-color: var(--dim-text); color: var(--dim-text);" onclick="enterAsGhost()">
                 3. GHOST_ACCESS (PUBLIC_VIEW)
             </button>
         </div>
         
-        <div style="position:absolute; bottom:20px; font-size:8px; color:#555; text-align: center; width: 100%;">
-            <div>
-                ALMTY LLC // EIN: 33-2507723 // &copy; 2026 ALL RIGHTS RESERVED
-            </div>
+        <div class="gateway-footer">
+            <div>ALMTY LLC // EIN: 33-2507723 // &copy; 2026 ALL RIGHTS RESERVED</div>
             <div style="margin-top: 5px; color: #333; font-size: 7px;">
                 NOTICE: ALL ASSETS, PROTOCOLS, AND VISUAL IDENTITIES ARE THE EXCLUSIVE INTELLECTUAL PROPERTY OF ALMTY LLC.
             </div>
-        </div>
+        </div>   
     </div>
 
     <div id="main-site" style="display:none; flex-direction:column; height:100%;">
