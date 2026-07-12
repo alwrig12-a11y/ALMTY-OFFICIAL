@@ -2152,21 +2152,41 @@ function finishLoadingBar() {
             } // <--- Closes the 'else' block for standard users
         }, 800); // <--- Closes the setTimeout block
     } // <--- Closes the executeEntry function
-    /**
-     * Initialization Hook: Checks for active session on boot.
+
+/**
+     * Initialization Hook: Checks for active session on boot & handles QR code physical scans.
      */
     window.addEventListener('load', () => {
         // Ensure stash count is synced
         if (typeof stashStream !== 'undefined') {
-            document.getElementById('cart-count').innerText = stashStream.length;
+            const cartCountEl = document.getElementById('cart-count');
+            if (cartCountEl) cartCountEl.innerText = stashStream.length;
         }
 
+        // -----------------------------------------------------------------
+        // [PHYSICAL QR HARDWARE DETECTION]: Extract ?serial=AL-XX-XXXX from URL
+        // -----------------------------------------------------------------
+        const urlParams = new URLSearchParams(window.location.search);
+        const scannedSerial = urlParams.get('serial');
+
+        if (scannedSerial) {
+            const cleanSerial = scannedSerial.toUpperCase().trim();
+            sessionStorage.setItem('scanned_serial_id', cleanSerial);
+            console.log(`[QR_DETECTED]: PHYSICAL GARMENT SERIAL LOGGED -> ${cleanSerial}`);
+        }
+
+        // Check for active session authorization
         if (sessionStorage.getItem('protocol_clearance') === 'authorized') {
             const almtyId = sessionStorage.getItem('current_user') || 'ALMTY';
             isMasterOverseer = sessionStorage.getItem('is_master') === 'true';
-            document.getElementById('gateway-overlay').style.display = 'none';
-            document.getElementById('main-site').style.display = 'flex';
-            document.getElementById('user-initial').innerText = almtyId.charAt(0).toUpperCase();
+            
+            const gatewayOverlay = document.getElementById('gateway-overlay');
+            const mainSite = document.getElementById('main-site');
+            const userInitial = document.getElementById('user-initial');
+
+            if (gatewayOverlay) gatewayOverlay.style.display = 'none';
+            if (mainSite) mainSite.style.display = 'flex';
+            if (userInitial) userInitial.innerText = almtyId.charAt(0).toUpperCase();
 
             if (isMasterOverseer) {
                 setRank(5);
@@ -2177,9 +2197,14 @@ function finishLoadingBar() {
             } else {
                 setRank(1);
                 updateSidebar();
-                loadPage('manifesto');
+                
+                // If user arrived from scanning a QR code, jump directly to Handshake tab
+                if (scannedSerial) {
+                    loadPage('handshake');
+                } else {
+                    loadPage('manifesto');
+                }
 
-                // FIX: Ensure the simulation hub stays hidden on page reload/refresh
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) {
                     if (almtyId === 'demo patron') {
@@ -2189,8 +2214,9 @@ function finishLoadingBar() {
                     }
                 }
             }
-        } // <--- FIX: This properly closes the 'if' statement without the rogue timer
+        }
     });
+
         /**
          * THE TYPEWRITER PROTOCOL
          */
@@ -3401,8 +3427,12 @@ async function verifyHemCode()
             // -----------------------------------------------------------------
             // ROUTE: HANDSHAKE
             // -----------------------------------------------------------------
+            // Inside loadPage(page) under else if (page === 'handshake'):
             else if (page === 'handshake') 
             {
+                // Retrieve pre-logged QR scan serial if present
+                const savedSerial = sessionStorage.getItem('scanned_serial_id') || '';
+
                 pageBody += `
                 <div class="handshake-terminal">
                     <span class="handshake-label">01 // VOUCH_AUTHENTICATION_KEY</span>
@@ -3418,13 +3448,13 @@ async function verifyHemCode()
                     </button>
 
                     <span class="handshake-label" style="margin-top:30px; border-top: 1px dashed #222; padding-top: 20px;">03 // PHYSICAL_ASSET_HEM_CODE</span>
-                    <input type="text" id="hem-code-input" class="handshake-input" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19">
+                    <input type="text" id="hem-code-input" class="handshake-input" value="${savedSerial}" placeholder="XXXX-XXXX-XXXX-XXXX or 4-DIGIT KEY" maxlength="19">
                     <button class="btn-buy" style="border-color:var(--canary-yellow); color:var(--canary-yellow);" onclick="verifyHemCode()">
                         AUTHENTICATE_HEM_CODE
                     </button>
                     <div id="hem-verification-result" style="margin-top: 10px; font-size: 10px; display: none;"></div>
                 </div>`;
-            } 
+            }
             
             // -----------------------------------------------------------------
             // ROUTE: TERMS
