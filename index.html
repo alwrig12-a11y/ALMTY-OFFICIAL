@@ -2233,6 +2233,7 @@ function finishLoadingBar() {
             if (isMasterOverseer) {
                 setRank(5); 
                 updateSidebar();
+                refreshMasterData(); // Fetch the latest waitlist and order history
                 loadPage('master_dashboard');
                 const simHub = document.getElementById('rank-toggles-container');
                 if (simHub) simHub.style.display = 'none';
@@ -3003,7 +3004,7 @@ async function verifyHemCode()
         {
             let rows = '';
             
-            if (waitlistQueue.length === 0)
+            if (!waitlistQueue || waitlistQueue.length === 0)
             {
                 rows = `<tr><td colspan="4" style="text-align:center; padding:30px; color:var(--dim-text);">[QUEUE_EMPTY]</td></tr>`;
             }
@@ -3011,16 +3012,22 @@ async function verifyHemCode()
             {
                 waitlistQueue.forEach(entry => 
                 {
-                    const dateObj = new Date(entry.timestamp);
+                    // Handles both live MongoDB user objects and local mock fallback data
+                    const rawDate = entry.createdAt || entry.timestamp || new Date();
+                    const dateObj = new Date(rawDate);
                     const formattedTime = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
                     
+                    const userHandle = (entry.username || entry.id || 'UNKNOWN').toUpperCase();
+                    const userEmail = entry.email || entry.contact || 'N/A';
+                    const userRole = entry.role || 'SOCIO';
+
                     rows += `
                         <tr>
                             <td>${formattedTime}</td>
-                            <td style="font-weight:bold;">${entry.id.toUpperCase()}</td>
-                            <td style="color:var(--canary-yellow);">${entry.contact}</td>
+                            <td style="font-weight:bold; color:var(--socio-green);">${userHandle} <span style="font-size:8px; color:var(--dim-text);">(${userRole})</span></td>
+                            <td style="color:var(--canary-yellow);">${userEmail}</td>
                             <td>
-                                <button class="btn-buy" style="padding:4px 8px; font-size:8px; width:auto; border-color:var(--socio-green); color:var(--socio-green);" onclick="alert('INVITATION_DISPATCHED')">
+                                <button class="btn-buy" style="padding:4px 8px; font-size:8px; width:auto; border-color:var(--socio-green); color:var(--socio-green);" onclick="alert('CLEARANCE_CONFIRMED_FOR_${userHandle}')">
                                     ISSUE_CLEARANCE
                                 </button>
                             </td>
@@ -3046,7 +3053,7 @@ async function verifyHemCode()
                             <thead>
                                 <tr>
                                     <th>TIMESTAMP</th>
-                                    <th>REQUESTED_ID</th>
+                                    <th>PATRON_ID</th>
                                     <th>COMM_LINK (EMAIL)</th>
                                     <th>ACTION</th>
                                 </tr>
@@ -3584,7 +3591,22 @@ async function verifyHemCode()
             }
             else if (page === 'master_waitlist') 
             {
+                // Render placeholder layout initially
                 pageBody += buildMasterWaitlistHtml();
+
+                // Fetch fresh MongoDB waitlist stream from Render in the background
+                refreshMasterData().then(() => {
+                    const viewContainer = document.getElementById('main-view');
+                    const activeTab = document.querySelector('.file-link.active');
+                    
+                    // Only update DOM if user is still viewing the waitlist tab
+                    if (viewContainer && activeTab && activeTab.id === 'nav-master_waitlist') {
+                        const tabBody = viewContainer.querySelector('.tab-content-body');
+                        if (tabBody) {
+                            tabBody.innerHTML = buildMasterWaitlistHtml();
+                        }
+                    }
+                });
             }
 
             // -----------------------------------------------------------------
