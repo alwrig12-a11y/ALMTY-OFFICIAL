@@ -122,12 +122,13 @@
             z-index: 9999; 
             display: flex; 
             flex-direction: column; 
-            justify-content: center; 
+            justify-content: space-between; /* Keeps top logo, middle inputs, and bottom footer spaced out */
             align-items: center; 
             transition: opacity 0.8s ease;
-            padding: 20px; 
+            padding: 30px 20px 20px 20px; 
             text-align: center; 
             box-sizing: border-box;
+            overflow-y: auto; /* Enables smooth scrolling on smaller screens so nothing overlaps */
         }
 
         #logo-gateway 
@@ -302,18 +303,31 @@
             transition: width 0.1s linear; 
         }
 
+        .gateway-button-trio 
+        {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 320px;
+        }
+
         .btn-signup 
         {
-            margin-top: 30px;
+            margin-top: 0 !important; /* Overrides default top margins so stacked buttons don't push down */
             background: none;
             border: 1px solid var(--accent);
             color: #444444;
-            font-family: 'JetBrains Mono';
+            font-family: 'JetBrains Mono', monospace;
             font-size: 9px;
-            padding: 8px 15px;
+            padding: 10px 15px;
             cursor: pointer;
             transition: 0.3s;
             letter-spacing: 2px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .btn-signup:hover 
@@ -1423,16 +1437,16 @@
         </div>
         
         <div class="gateway-button-trio" style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px; width: 100%; max-width: 320px;">
-    <button class="btn-signup" id="signup-toggle" onclick="toggleSignup()">
-        1. CREATE_ACCOUNT (REQUEST_ACCESS)
-    </button>
-    <button class="btn-signup" onclick="triggerPasswordReset()">
-        2. FORGOT_PASSWORD
-    </button>
-    <button class="btn-signup" style="border-color: var(--dim-text); color: var(--dim-text);" onclick="enterAsGhost()">
-        3. GHOST_ACCESS (PUBLIC_VIEW)
-    </button>
-</div>
+            <button class="btn-signup" id="signup-toggle" onclick="toggleSignup()">
+                1. CREATE_ACCOUNT (REQUEST_ACCESS)
+            </button>
+            <button class="btn-signup" onclick="triggerPasswordReset()">
+                2. FORGOT_PASSWORD
+            </button>
+            <button class="btn-signup" style="border-color: var(--dim-text); color: var(--dim-text);" onclick="enterAsGhost()">
+                3. GHOST_ACCESS (PUBLIC_VIEW)
+            </button>
+        </div>
         
         <div style="position:absolute; bottom:20px; font-size:8px; color:#555; text-align: center; width: 100%;">
             <div>
@@ -1484,7 +1498,10 @@
                         </div>
 
                     </div>
-                    <div class="user-pic-bubble" onclick="loadPage('edit_profile')">
+                    <div 
+                        class="user-pic-bubble" 
+                        onclick="if (sessionStorage.getItem('almty_role') !== 'GHOST') { loadPage('edit_profile'); } else { alert('[ACCESS_DENIED]: GHOST OPERATIVES CANNOT EDIT DOSSIER.'); }"
+                    >
                         <span id="user-initial">A</span>
                     </div>
                 </div>
@@ -1576,17 +1593,10 @@
         let stashStream = JSON.parse(localStorage.getItem('stashStream')) || [];
         
         // Simulating a database of historical orders for the Master Dashboard to view
-        let orderHistory = JSON.parse(localStorage.getItem('orderHistory')) || [
-            { id: "NODE_401928", date: "2026-03-18 14:32:01", total: 450.00, status: "SHIPPED", customer: "Client_01" },
-            { id: "NODE_558192", date: "2026-03-19 09:15:44", total: 245.00, status: "DELIVERED", customer: "Client_02" },
-            { id: "NODE_771029", date: "2026-03-20 08:05:12", total: 110.00, status: "PROCESSING", customer: "Client_03" }
-        ];
+        let orderHistory = JSON.parse(localStorage.getItem('orderHistory')) || [];
         
         // Waitlist mock data
-        let waitlistQueue = JSON.parse(localStorage.getItem('almty_waitlist')) || [
-            { id: "ghost_runner", contact: "ghost@node502.com", timestamp: "2026-03-15T12:00:00Z" },
-            { id: "ky_native", contact: "local@louisville.ky", timestamp: "2026-03-16T14:30:00Z" }
-        ];
+        let waitlistQueue = JSON.parse(localStorage.getItem('almty_waitlist')) || [];
 
         /** * Rank System Configurations 
          */
@@ -1605,240 +1615,17 @@
         // ------------------------------------------------------------------------
         // FRONTLINE STORE ASSETS (General Availability based on rank)
         // ------------------------------------------------------------------------
-        const storeAssets = [
-            { 
-                id: 1, 
-                name: "Asset-502-1042", 
-                category: "Outerwear", 
-                price: 245.00, 
-                stockQuantity: 42,
-                status: "ACTIVE",
-                desc: "PROVISION_PENDING: Tactical windbreaker shell. Material specs and structural blueprints are currently being encrypted. Surveillance active.", 
-                specs: { material: "Nylon 6,6 Ripstop", origin: "Louisville, KY", weight: "140gsm" },
-                minRank: 0 
-            },
-            { 
-                id: 2, 
-                name: "Asset-502-2991", 
-                category: "Apparel", 
-                price: 85.00, 
-                stockQuantity: 108,
-                status: "ACTIVE",
-                desc: "PROVISION_PENDING: Base layer compression fit. Thermal mapping integrated. Quantum signature unverified.", 
-                specs: { material: "Polyester/Elastane Blend", origin: "Node 502 Lab", weight: "180gsm" },
-                minRank: 0 
-            },
-            { 
-                id: 3, 
-                name: "Asset-502-3844", 
-                category: "Accessory", 
-                price: 55.00, 
-                stockQuantity: 15,
-                status: "LOW_STOCK",
-                desc: "PROVISION_PENDING: Utility rig harness. Load bearing calculations restricted pending clearance.", 
-                specs: { material: "Ballistic Nylon Webbing", origin: "Louisville, KY", weight: "N/A" },
-                minRank: 0 
-            },
-            { 
-                id: 4, 
-                name: "Asset-502-4112", 
-                category: "Footwear", 
-                price: 195.00, 
-                stockQuantity: 0,
-                status: "OUT_OF_STOCK",
-                desc: "PROVISION_PENDING: Urban traversal tread setup. Grip composites classified under Node 502 directive.", 
-                specs: { material: "Vulcanized Rubber/Mesh", origin: "Node 502 Lab", weight: "450g per unit" },
-                minRank: 0 
-            },
-            { 
-                id: 5, 
-                name: "Asset-502-5509", 
-                category: "Outerwear", 
-                price: 310.00, 
-                stockQuantity: 28,
-                status: "ACTIVE",
-                desc: "PROVISION_PENDING: Heavyweight parka configuration. Insulation metrics withheld. Authorization required.", 
-                specs: { material: "Gore-Tex Pro Shell", origin: "Louisville, KY", weight: "850gsm" },
-                minRank: 0 
-            },
-            { 
-                id: 6, 
-                name: "Asset-502-6011", 
-                category: "Apparel", 
-                price: 110.00, 
-                stockQuantity: 75,
-                status: "ACTIVE",
-                desc: "PROVISION_PENDING: Standard issue fatigue pants. Articulation panels locked in blueprint mode.", 
-                specs: { material: "Cotton Canvas 12oz", origin: "Node 502 Lab", weight: "Heavy" },
-                minRank: 0 
-            },
-            { 
-                id: 7, 
-                name: "Asset-502-7734", 
-                category: "Accessory", 
-                price: 40.00, 
-                stockQuantity: 200,
-                status: "ACTIVE",
-                desc: "PROVISION_PENDING: Encrypted comms shroud. Signal dampening fiber weave details pending.", 
-                specs: { material: "Merino Wool Blend", origin: "Louisville, KY", weight: "Light" },
-                minRank: 0 
-            },
-            { 
-                id: 8, 
-                name: "Asset-502-8999", 
-                category: "Apparel", 
-                price: 95.00, 
-                stockQuantity: 55,
-                status: "ACTIVE",
-                desc: "PROVISION_PENDING: Mid-layer mock neck. Breathability algorithm currently compiling in background.", 
-                specs: { material: "French Terry Cotton", origin: "Node 502 Lab", weight: "400gsm" },
-                minRank: 0 
-            },
-            { 
-                id: 9, 
-                name: "Asset-502-9012", 
-                category: "Apparel", 
-                price: 155.00, 
-                stockQuantity: 30,
-                status: "ACTIVE",
-                desc: "PROVISION_PENDING: Drop-crotch tactical trousers. Mobility algorithms applied. Hem code integration active.", 
-                specs: { material: "Schoeller Dryskin", origin: "Louisville, KY", weight: "Medium" },
-                minRank: 0 
-            },
-            { 
-                id: 10, 
-                name: "Asset-502-9100", 
-                category: "Accessory", 
-                price: 65.00, 
-                stockQuantity: 8,
-                status: "LOW_STOCK",
-                desc: "PROVISION_PENDING: Node 502 issue duffel. Ballistic nylon construction. Waterproof zippers.", 
-                specs: { material: "1000D Cordura", origin: "Louisville, KY", weight: "N/A" },
-                minRank: 0 
-            }
-        ];
+        const storeAssets = [];
 
         // ------------------------------------------------------------------------
         // ARCHIVE ASSETS (Rank 2+ Required)
         // ------------------------------------------------------------------------
-        const archiveAssets = [
-            { 
-                id: 101, 
-                name: "Asset-502-A101", 
-                category: "Outerwear", 
-                price: 450.00, 
-                stockQuantity: 3,
-                status: "CRITICAL_STOCK",
-                desc: "ARCHIVED_ASSET: Prototype ballistic vest shell. Legacy materials from 2024 iteration. Rare drop.", 
-                specs: { material: "Kevlar Weave Prototype", origin: "Node 502 Alpha Lab", weight: "1200gsm" },
-                minRank: 2 
-            },
-            { 
-                id: 102, 
-                name: "Asset-502-A102", 
-                category: "Footwear", 
-                price: 220.00, 
-                stockQuantity: 12,
-                status: "ACTIVE",
-                desc: "ARCHIVED_ASSET: First generation traversal boots. Sole composite shows wear-testing anomalies.", 
-                specs: { material: "Vibram / Full Grain Leather", origin: "Louisville, KY", weight: "600g per unit" },
-                minRank: 2 
-            },
-            { 
-                id: 103, 
-                name: "Asset-502-A103", 
-                category: "Apparel", 
-                price: 135.00, 
-                stockQuantity: 0,
-                status: "VAULTED",
-                desc: "ARCHIVED_ASSET: Discontinued stealth hoodie. Infrared deflection dye no longer in active production.", 
-                specs: { material: "IR Deflecting Cotton", origin: "Node 502 Lab", weight: "450gsm" },
-                minRank: 2 
-            },
-            { 
-                id: 104, 
-                name: "Asset-502-A104", 
-                category: "Accessory", 
-                price: 75.00, 
-                stockQuantity: 45,
-                status: "ACTIVE",
-                desc: "ARCHIVED_ASSET: Operator gloves. Kevlar thread stitching. Clearance level SOLDATO or higher required.", 
-                specs: { material: "Nomex / Goatskin", origin: "Louisville, KY", weight: "Light" },
-                minRank: 2 
-            },
-            { 
-                id: 105, 
-                name: "Asset-502-A105", 
-                category: "Apparel", 
-                price: 160.00, 
-                stockQuantity: 0,
-                status: "VAULTED",
-                desc: "ARCHIVED_ASSET: Reinforced cargo chassis. Legacy pocket geometry. Data vault states zero current inventory.", 
-                specs: { material: "Heavy Canvas", origin: "Node 502 Lab", weight: "Heavy" },
-                minRank: 2 
-            },
-            { 
-                id: 106, 
-                name: "Asset-502-A106", 
-                category: "Outerwear", 
-                price: 380.00, 
-                stockQuantity: 5,
-                status: "LOW_STOCK",
-                desc: "ARCHIVED_ASSET: Experimental trench silhouette. Waterproofing matrix failed QA, released as aesthetic only.", 
-                specs: { material: "Waxed Cotton 14oz", origin: "Louisville, KY", weight: "1000gsm" },
-                minRank: 2 
-            }
-        ];
+        const archiveAssets = [];
 
         // ------------------------------------------------------------------------
         // SANCTUM ASSETS (Rank 3+ Required)
         // ------------------------------------------------------------------------
-        const sanctumAssets = [
-            { 
-                id: 201, 
-                name: "Asset-502-S901", 
-                category: "Outerwear", 
-                price: 850.00, 
-                stockQuantity: 1,
-                status: "BESPOKE_ONLY",
-                desc: "SANCTUM_EXCLUSIVE: Bespoke exoskeleton drape. Node 502 executive clearance only. Carbon-fiber threading.", 
-                specs: { material: "Dyneema Composite", origin: "Node 502 Sanctum", weight: "Variable" },
-                minRank: 3 
-            },
-            { 
-                id: 202, 
-                name: "Asset-502-S902", 
-                category: "Accessory", 
-                price: 300.00, 
-                stockQuantity: 10,
-                status: "ACTIVE",
-                desc: "SANCTUM_EXCLUSIVE: Biometric tracking hardware integrated ring. Syncs directly with Stash Stream.", 
-                specs: { material: "Titanium / NFC Core", origin: "Louisville, KY", weight: "15g" },
-                minRank: 3 
-            },
-            { 
-                id: 203, 
-                name: "Asset-502-S903", 
-                category: "Apparel", 
-                price: 450.00, 
-                stockQuantity: 20,
-                status: "ACTIVE",
-                desc: "SANCTUM_EXCLUSIVE: The 90/10 Codex uniform. Reserved strictly for CAPO and PATRON ranks.", 
-                specs: { material: "Japanese Selvedge / Nomex", origin: "Node 502 Sanctum", weight: "Heavy" },
-                minRank: 3 
-            },
-            { 
-                id: 204, 
-                name: "Asset-502-S904", 
-                category: "Footwear", 
-                price: 600.00, 
-                stockQuantity: 0,
-                status: "PROTOTYPE_LOCKED",
-                desc: "SANCTUM_EXCLUSIVE: Zero-gravity acoustic dampening sneakers. Prototype phase completely finalized.", 
-                specs: { material: "Aerogel / Carbon Fiber", origin: "Louisville, KY", weight: "200g per unit" },
-                minRank: 3 
-            }
-        ];
+        const sanctumAssets = [];
 
         /**
          * Global combined array mapping all inventory across the node for Master Overseer queries.
@@ -1904,19 +1691,21 @@ function enterAsGhost() {
     sessionStorage.setItem('current_user', 'GHOST_OPERATIVE');
     currentUser = 'GHOST_OPERATIVE';
     
-    const overlay = document.getElementById('gateway-overlay');
-    if (overlay) overlay.style.opacity = '0';
-
+    document.getElementById('gateway-overlay').style.opacity = '0';
     setTimeout(() => {
-        if (overlay) overlay.style.display = 'none';
+        document.getElementById('gateway-overlay').style.display = 'none';
         document.getElementById('main-site').style.display = 'flex';
         
-        // Lock rank at Tier 0 GHOST
-        if (typeof setRank === 'function') setRank(0);
+        // Explicitly set HUD & Rank level to 0 (GHOST)
+        currentRank = 0;
+        document.getElementById('rank-disp').innerText = "GHOST";
+        document.getElementById('aura-disp').innerText = "0";
+        document.getElementById('respeto-disp').innerText = "0";
+        document.getElementById('user-initial').innerText = "G";
+        
         updateSidebar();
         loadPage('manifesto');
         
-        // Hide simulation hub for public Ghosts
         const simHub = document.getElementById('rank-toggles-container');
         if (simHub) simHub.style.display = 'none';
     }, 800);
@@ -2135,27 +1924,49 @@ keyInput.addEventListener('keydown', async (e) => {
         }
     } else {
        // --- LOGIN MODE ---
-const userOrEmail = userInput.value.toLowerCase().trim();
+const userInputVal = userInput.value.toLowerCase().trim();
 const password = keyInput.value.trim();
+const statusDisplay = document.getElementById('status-display');
 
 try {
     startLoadingBar();
     statusDisplay.innerText = ">> STATUS: INITIATING_DECRYPT... <<";
+    statusDisplay.style.color = "var(--canary-yellow)";
 
-    // 1. Log in via Firebase Client SDK
-    const userCredential = await firebase.auth().signInWithEmailAndPassword(userOrEmail, password);
+    let loginEmail = userInputVal;
+
+    // 1. Resolve Username -> Email if user typed handle instead of email
+    if (!userInputVal.includes('@')) {
+        try {
+            const emailLookup = await fetch(`${API_URL}/api/users/lookup-email?username=${userInputVal}`);
+            const lookupData = await emailLookup.json();
+            
+            if (emailLookup.ok && lookupData.email) {
+                loginEmail = lookupData.email;
+            } else {
+                throw new Error("ALMTY_ID_NOT_FOUND");
+            }
+        } catch (err) {
+            statusDisplay.innerText = ">> ERROR: INVALID_ALMTY_ID <<";
+            statusDisplay.style.color = "var(--alert-red)";
+            finishLoadingBar();
+            return;
+        }
+    }
+
+    // 2. Authenticate via Firebase Client SDK using resolved email
+    const userCredential = await firebase.auth().signInWithEmailAndPassword(loginEmail, password);
     const idToken = await userCredential.user.getIdToken();
 
-    // 2. Fetch or initialize user profile from Render backend via /sync-session
+    // 3. Sync session with Render backend & MongoDB dossier
     const response = await fetch(`${API_URL}/api/users/sync-session`, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
         },
-        // 🛠️ FIX: Pass the username input so Render can auto-create the MongoDB dossier if missing!
         body: JSON.stringify({
-            username: userOrEmail.includes('@') ? userOrEmail.split('@')[0] : userOrEmail
+            username: userInputVal.includes('@') ? userInputVal.split('@')[0] : userInputVal
         })
     });
 
@@ -2170,6 +1981,7 @@ try {
         if (isMasterOverseer) {
             sessionStorage.setItem('is_master', 'true');
             statusDisplay.innerText = ">> ACCESS_GRANTED: WELCOME_ARCHITECT <<";
+            statusDisplay.style.color = "var(--master-blue)";
             setTimeout(() => { executeEntry(data.username); }, 1500);
             return;
         }
@@ -3618,28 +3430,45 @@ async function verifyHemCode()
             // -----------------------------------------------------------------
             else if (page === 'edit_profile') 
             {
-                const currentUserId = sessionStorage.getItem('current_user') || 'ALMTY';
-                
-                pageBody += `
-                <div class="handshake-terminal" style="max-width:500px;">
-                    <span class="handshake-label">01 // PATRON_DISPLAY_NAME</span>
-                    <input type="text" class="handshake-input" style="font-family: 'JetBrains Mono', monospace;" value="${currentUserId.toUpperCase()}">
-                    
-                    <span class="handshake-label">02 // BIOMETRIC_AVATAR_STREAM</span>
-                    <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                        <div class="user-pic-bubble" id="edit-avatar-preview" style="width:60px; height:60px; font-size:24px; background-size: cover; background-position: center;">
+                // GHOST ACCESS GUARD: Prevent unauthenticated Ghosts from editing profiles
+                if (sessionStorage.getItem('almty_role') === 'GHOST') {
+                    pageBody += `
+                        <div style="border: 1px dashed var(--alert-red); padding: 40px; text-align: center; color: var(--alert-red); background: rgba(255, 51, 51, 0.05);">
+                            <div style="font-family: 'Black Ops One', cursive; font-size: 16px; margin-bottom: 10px;">[ACCESS_DENIED: IDENTITY_LOCKED]</div>
+                            <p style="font-size: 10px; color: var(--military-white); line-height: 1.6; margin-bottom: 20px;">
+                                GHOST OPERATIVES CANNOT MODIFY DOSSIER ATTRIBUTES. 
+                                <br>CREATE AN ACCOUNT OR VALIDATE PHYSICAL HARDWARE TO INITIATE A SOVEREIGN PROFILE.
+                            </p>
+                            <button class="btn-buy" style="max-width: 200px; margin: 0 auto; border-color: var(--canary-yellow); color: var(--canary-yellow);" onclick="location.reload()">
+                                INITIALIZE_ACCOUNT
+                            </button>
                         </div>
-                        <div style="flex:1;">
-                            <input type="file" id="edit-avatar-file-picker" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
-                            <button class="btn-buy" style="width:100%; cursor:pointer;" onclick="document.getElementById('edit-avatar-file-picker').click()">UPLOAD_NEW_STREAM</button>
-                        </div>
-                    </div>
+                    `;
+                } else {
+                    // STANDARD PATRON EDIT PROFILE VIEW
+                    const currentUserId = sessionStorage.getItem('current_user') || 'ALMTY';
                     
-                    <button class="btn-buy" style="border-color:var(--socio-green); color:var(--socio-green); margin-top:20px;" onclick="alert('PROFILE_SYNC_COMPLETE')">
-                        SYNC_CHANGES_TO_NODE
-                    </button>
-                </div>`;
-            } 
+                    pageBody += `
+                    <div class="handshake-terminal" style="max-width:500px;">
+                        <span class="handshake-label">01 // PATRON_DISPLAY_NAME</span>
+                        <input type="text" id="edit-display-name-input" class="handshake-input" style="font-family: 'JetBrains Mono', monospace;" value="${currentUserId.toUpperCase()}">
+                        
+                        <span class="handshake-label">02 // BIOMETRIC_AVATAR_STREAM</span>
+                        <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                            <div class="user-pic-bubble" id="edit-avatar-preview" style="width:60px; height:60px; font-size:24px; background-size: cover; background-position: center;">
+                            </div>
+                            <div style="flex:1;">
+                                <input type="file" id="edit-avatar-file-picker" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
+                                <button class="btn-buy" style="width:100%; cursor:pointer;" onclick="document.getElementById('edit-avatar-file-picker').click()">UPLOAD_NEW_STREAM</button>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-buy" style="border-color:var(--socio-green); color:var(--socio-green); margin-top:20px;" onclick="submitProfileSync()">
+                            SYNC_CHANGES_TO_NODE
+                        </button>
+                    </div>`;
+                }
+            }
             
             // -----------------------------------------------------------------
             // ROUTE: THE MARKET
