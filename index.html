@@ -1422,13 +1422,17 @@
             </div>
         </div>
         
-        <button 
-            class="btn-signup" 
-            id="signup-toggle" 
-            onclick="toggleSignup()"
-        >
-            CREATE_ACCOUNT (REQUEST_ACCESS)
-        </button>
+        <div class="gateway-button-trio" style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px; width: 100%; max-width: 320px;">
+    <button class="btn-signup" id="signup-toggle" onclick="toggleSignup()">
+        1. CREATE_ACCOUNT (REQUEST_ACCESS)
+    </button>
+    <button class="btn-signup" onclick="triggerPasswordReset()">
+        2. FORGOT_PASSWORD
+    </button>
+    <button class="btn-signup" style="border-color: var(--dim-text); color: var(--dim-text);" onclick="enterAsGhost()">
+        3. GHOST_ACCESS (PUBLIC_VIEW)
+    </button>
+</div>
         
         <div style="position:absolute; bottom:20px; font-size:8px; color:#555; text-align: center; width: 100%;">
             <div>
@@ -1864,7 +1868,7 @@
         }
     /* --- THE REST OF YOUR FUNCTIONS BELOW --- */
 
-async function toggleSignup() {
+    async function toggleSignup() {
     gatewayMode = (gatewayMode === 'login') ? 'signup' : 'login';
     resetGateway(); // Clears terminal boxes for fresh input
     signupPhase = 'id'; // Initializes the sequence for the new account
@@ -1888,7 +1892,65 @@ async function toggleSignup() {
         keyInput.type = "password"; 
         signupBtn.innerText = "CREATE_ACCOUNT";
     }
-}   
+}
+
+/**
+ * [PROTOCOL]: GHOST_ACCESS
+ * Allows non-authenticated operatives to view public sections (Manifesto, The Front, Terms)
+ */
+function enterAsGhost() {
+    sessionStorage.setItem('protocol_clearance', 'authorized');
+    sessionStorage.setItem('almty_role', 'GHOST');
+    sessionStorage.setItem('current_user', 'GHOST_OPERATIVE');
+    currentUser = 'GHOST_OPERATIVE';
+    
+    const overlay = document.getElementById('gateway-overlay');
+    if (overlay) overlay.style.opacity = '0';
+
+    setTimeout(() => {
+        if (overlay) overlay.style.display = 'none';
+        document.getElementById('main-site').style.display = 'flex';
+        
+        // Lock rank at Tier 0 GHOST
+        if (typeof setRank === 'function') setRank(0);
+        updateSidebar();
+        loadPage('manifesto');
+        
+        // Hide simulation hub for public Ghosts
+        const simHub = document.getElementById('rank-toggles-container');
+        if (simHub) simHub.style.display = 'none';
+    }, 800);
+}
+
+/**
+ * [PROTOCOL]: FORGOT_PASSWORD
+ * Triggers Firebase Client SDK Password Reset Email
+ */
+async function triggerPasswordReset() {
+    const email = prompt("ENTER COMM_LINK (EMAIL) FOR PASSKEY RESET:");
+    if (!email || !email.trim()) return;
+
+    const statusDisplay = document.getElementById('status-display');
+
+    try {
+        await firebase.auth().sendPasswordResetEmail(email.trim());
+        if (statusDisplay) {
+            statusDisplay.innerText = ">> SUCCESS: PASSKEY_RESET_LINK_DISPATCHED <<";
+            statusDisplay.style.color = "var(--socio-green)";
+        } else {
+            alert("[TRANSMISSION_SENT]: PASSKEY_RESET_LINK_DISPATCHED_TO_EMAIL.");
+        }
+    } catch (err) {
+        console.error("Password Reset Error:", err);
+        if (statusDisplay) {
+            statusDisplay.innerText = `>> ERROR: ${err.message.toUpperCase()} <<`;
+            statusDisplay.style.color = "var(--alert-red)";
+        } else {
+            alert(`[PROTOCOL_ERROR]: ${err.message.toUpperCase()}`);
+        }
+    }
+}
+
 async function refreshMasterData() {
     if (!isMasterOverseer) return;
 
@@ -2486,6 +2548,23 @@ async function verifyHemCode()
             loadPage('cart');
         }
 
+        // Helper to get user-specific stash key
+        function getStashKey() {
+            const user = sessionStorage.getItem('current_user') || 'guest';
+            return `stashStream_${user}`;
+        }
+
+        function loadStashStream() {
+            return JSON.parse(localStorage.getItem(getStashKey())) || [];
+        }
+
+        function saveStashStream(stream) {
+        localStorage.setItem(getStashKey(), JSON.stringify(stream));
+        stashStream = stream;
+        const cartCount = document.getElementById('cart-count');
+        if (cartCount) cartCount.innerText = stream.length;
+    }
+
         /**
          * Destroys an item from the Stash Stream buffer.
          * @param {number} stashId - The timestamp assigned to the item at insertion.
@@ -2493,7 +2572,7 @@ async function verifyHemCode()
         function removeFromStash(stashId) 
         {
             stashStream = stashStream.filter(item => item.stashId !== stashId);
-            localStorage.setItem('stashStream', JSON.stringify(stashStream));
+            saveStashStream(stashStream);
             
             document.getElementById('cart-count').innerText = stashStream.length;
             loadPage('cart');
