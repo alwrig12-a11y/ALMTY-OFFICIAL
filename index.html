@@ -2388,26 +2388,38 @@ async function verifyHemCode()
 
         const data = await response.json();
 
-        if (response.ok) {
+    if (response.ok) {
             resultDiv.style.color = "var(--socio-green)";
-            resultDiv.innerText = `[PROTOCOL_SYNC]: ${data.message}. +${data.respetoAwarded} RESPETO ADDED. NEW RANK: ${data.newRole}`;
+            resultDiv.innerText = `[PROTOCOL_SYNC]: ${data.message}. +${data.respetoAwarded} RESPETO ADDED. RANK: ${data.newRole}`;
             input.style.borderColor = "var(--socio-green)";
             
-            // Update HUD Stats in real-time
+            // 1. UPDATE CUMULATIVE STATS ON HUD IN REAL-TIME
             const respetoDisp = document.getElementById('respeto-disp');
+            const auraDisp = document.getElementById('aura-disp');
             const rankDisp = document.getElementById('rank-disp');
             
-            if (respetoDisp) respetoDisp.innerText = data.respetoAwarded;
-            if (rankDisp) rankDisp.innerText = data.newRole;
+            if (respetoDisp && data.totalRespeto !== undefined) {
+                respetoDisp.innerText = data.totalRespeto.toLocaleString();
+            }
+            if (auraDisp && data.totalAura !== undefined) {
+                auraDisp.innerText = data.totalAura.toLocaleString();
+            }
+            if (rankDisp) {
+                rankDisp.innerText = data.newRole;
+            }
+
+            // 2. SAVE TO LOCAL HANDSHAKE LEDGER
+            let validatedGarments = JSON.parse(localStorage.getItem('validated_garments')) || [];
+            validatedGarments.unshift({
+                serialId: keyEntered.length === 19 ? keyEntered : "AL-26-0001",
+                keyUsed: keyEntered,
+                respetoEarned: data.respetoAwarded,
+                date: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            });
+            localStorage.setItem('validated_garments', JSON.stringify(validatedGarments));
 
             setTimeout(() => { input.style.borderColor = "var(--accent)"; }, 2000);
-        } else {
-            resultDiv.style.color = "var(--alert-red)";
-            resultDiv.innerText = `[PROTOCOL_ERROR]: ${data.message.toUpperCase()}`;
-            input.style.borderColor = "var(--alert-red)";
-
-            setTimeout(() => { input.style.borderColor = "var(--accent)"; }, 2000);
-        }
+        }    
     } catch (err) {
         console.error("Handshake Execution Error:", err);
         resultDiv.style.color = "var(--alert-red)";
@@ -3401,15 +3413,33 @@ async function verifyHemCode()
             // -----------------------------------------------------------------
             else if (page === 'ledger') 
             {
-                // Patron view only sees their own orders, Master sees all (but master has their own fulfillment tab)
                 const currentUserId = sessionStorage.getItem('current_user') || 'UNKNOWN_PATRON';
                 const userOrders = isMasterOverseer ? orderHistory : orderHistory.filter(o => o.customer === currentUserId);
+                const validatedGarments = JSON.parse(localStorage.getItem('validated_garments')) || [];
+
+                pageBody += `<div style="color:var(--canary-yellow); font-size:11px; font-weight:bold; margin-bottom:15px;">// 01_HARDWARE_HANDSHAKE_LOGS</div>`;
+
+                if (validatedGarments.length === 0) {
+                    pageBody += `
+                        <div style="border:1px dashed #222; padding:20px; text-align:center; color:#444; margin-bottom:30px;">
+                            <p style="font-size:10px;">No physical garments authenticated yet.</p>
+                        </div>`;
+                } else {
+                    pageBody += validatedGarments.map(g => `
+                        <div class="log-entry active" style="border-left-color: var(--socio-green); margin-bottom: 10px;">
+                            <div class="log-time">${g.date} // SERIAL: ${g.serialId}</div>
+                            <div>AUTHENTICATION: <span style="color:var(--socio-green)">VERIFIED</span></div>
+                            <div>YIELD: <span style="color:var(--canary-yellow)">+${g.respetoEarned} RESPETO</span></div>
+                        </div>
+                    `).join('');
+                }
+
+                pageBody += `<div style="color:var(--canary-yellow); font-size:11px; font-weight:bold; margin-top:30px; margin-bottom:15px;">// 02_REQUISITION_PURCHASE_LOGS</div>`;
 
                 if (userOrders.length === 0) 
                 {
                     pageBody += `
-                        <div style="border:1px dashed #333; padding:40px; text-align:center; color:#444;">
-                            <p style="color:var(--socio-green); font-weight:bold; font-size:12px;">[LEDGER_STATUS: NULL]</p>
+                        <div style="border:1px dashed #222; padding:20px; text-align:center; color:#444;">
                             <p style="font-size:10px;">No historical requisitions detected for this Node ID.</p>
                         </div>`;
                 } 
@@ -3423,7 +3453,7 @@ async function verifyHemCode()
                         </div>
                     `).join('');
                 }
-            } 
+            }
             
             // -----------------------------------------------------------------
             // ROUTE: MANIFESTO
