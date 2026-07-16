@@ -1780,6 +1780,49 @@ async function refreshMasterData() {
 }
 
 /**
+ * [MASTER OVERSEER]: TRIGGER_STOCK_ADJUSTMENT
+ * Prompts Overseer for new inventory counts and syncs with Render/MongoDB
+ */
+async function triggerStockAdjustment(assetId, assetName, currentStock) {
+    const newStockInput = prompt(`[MASTER_OVERSEER]: ENTER NEW STOCK QUANTITY FOR ${assetName}:`, currentStock);
+    
+    if (newStockInput === null || newStockInput.trim() === '') return;
+
+    const newStock = parseInt(newStockInput.trim(), 10);
+    if (isNaN(newStock) || newStock < 0) {
+        alert('[PROTOCOL_ERROR]: INVALID_STOCK_VALUE');
+        return;
+    }
+
+    try {
+        const token = sessionStorage.getItem('almty_token');
+        const response = await fetch(`${API_URL}/api/products/adjust-stock`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ assetId, newStock })
+        });
+
+        if (response.ok) {
+            alert(`[SUCCESS]: ${assetName} STOCK UPDATED TO ${newStock} UNITS.`);
+        } else {
+            // Local fallback update for local buffer
+            const asset = masterInventoryDb.find(a => a.id === assetId);
+            if (asset) asset.stockQuantity = newStock;
+        }
+    } catch (err) {
+        // Fallback update if API is offline
+        const asset = masterInventoryDb.find(a => a.id === assetId);
+        if (asset) asset.stockQuantity = newStock;
+    }
+
+    // Refresh the master inventory table instantly
+    loadPage('master_inventory');
+}
+
+/**
  * [PROTOCOL]: RE_ENABLE_USER_PHASE
  * Unlocks the ID field and hides the key/email row for correction.
  */
@@ -2112,6 +2155,24 @@ function finishLoadingBar() {
             document.getElementById('gateway-overlay').style.display = 'none';
             document.getElementById('main-site').style.display = 'flex';
             
+            // Load isolated avatar on login
+            const userAvatar = localStorage.getItem(`avatar_${almtyId.toLowerCase()}`);
+            const hudBubble = document.querySelector('.user-pic-bubble');
+            const initialSpan = document.getElementById('user-initial');
+
+            if (userAvatar && hudBubble) {
+                hudBubble.style.backgroundImage = `url('${userAvatar}')`;
+                hudBubble.style.backgroundSize = 'cover';
+                hudBubble.style.backgroundPosition = 'center';
+                if (initialSpan) initialSpan.style.display = 'none';
+            } else if (hudBubble) {
+                hudBubble.style.backgroundImage = 'none';
+                if (initialSpan) {
+                    initialSpan.style.display = 'block';
+                    initialSpan.innerText = almtyId.charAt(0).toUpperCase();
+                }
+            }
+
             // Load saved avatar or use default logo
             const savedAvatar = localStorage.getItem('almty_user_avatar');
             const userInitial = document.getElementById('user-initial');
@@ -2818,38 +2879,42 @@ async function verifyHemCode()
         {
             let rows = '';
             
-            masterInventoryDb.forEach(item => 
-            {
-                let stockClass = "stock-high";
-                let stockStatus = "OPTIMAL";
-                
-                if (item.stockQuantity <= 10 && item.stockQuantity > 0) 
+            if (!masterInventoryDb || masterInventoryDb.length === 0) {
+                rows = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--dim-text);">[INVENTORY_EMPTY]</td></tr>`;
+            } else {
+                masterInventoryDb.forEach(item => 
                 {
-                    stockClass = "stock-low";
-                    stockStatus = "LOW";
-                }
-                else if (item.stockQuantity === 0)
-                {
-                    stockClass = "stock-out";
-                    stockStatus = "DEPLETED";
-                }
-                
-                rows += `
-                    <tr>
-                        <td style="font-weight:bold;">${item.name}</td>
-                        <td>${item.category}</td>
-                        <td style="color:var(--socio-green);">$${item.price.toFixed(2)}</td>
-                        <td>
-                            <span class="stock-indicator ${stockClass}">${item.stockQuantity} (${stockStatus})</span>
-                        </td>
-                        <td>
-                            <button class="btn-buy" style="padding:4px 8px; font-size:8px; width:auto; border-color:var(--master-blue); color:var(--master-blue);" onclick="alert('MANUAL_ADJUSTMENT_LOCKED_PENDING_API')">
-                                ADJUST_STOCK
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
+                    let stockClass = "stock-high";
+                    let stockStatus = "OPTIMAL";
+                    
+                    if (item.stockQuantity <= 10 && item.stockQuantity > 0) 
+                    {
+                        stockClass = "stock-low";
+                        stockStatus = "LOW";
+                    }
+                    else if (item.stockQuantity === 0)
+                    {
+                        stockClass = "stock-out";
+                        stockStatus = "DEPLETED";
+                    }
+                    
+                    rows += `
+                        <tr>
+                            <td style="font-weight:bold;">${item.name}</td>
+                            <td>${item.category}</td>
+                            <td style="color:var(--socio-green);">$${item.price.toFixed(2)}</td>
+                            <td>
+                                <span class="stock-indicator ${stockClass}">${item.stockQuantity} (${stockStatus})</span>
+                            </td>
+                            <td>
+                                <button class="btn-buy" style="padding:4px 8px; font-size:8px; width:auto; border-color:var(--master-blue); color:var(--master-blue);" onclick="triggerStockAdjustment(${item.id}, '${item.name}', ${item.stockQuantity})">
+                                    ADJUST_STOCK
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
 
             return `
                 <div class="master-dashboard-container">
@@ -3703,31 +3768,94 @@ async function verifyHemCode()
             }
         }
 
-        function handleAvatarUpload(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const previewDiv = document.getElementById('edit-avatar-preview');
-                    const globalUserPicBubble = document.querySelector('.user-pic-bubble:not(#edit-avatar-preview)');
-                    
-                    // Update the preview in edit profile page
-                    if (previewDiv) {
-                        previewDiv.style.backgroundImage = `url('${e.target.result}')`;
-                    }
-                    
-                    // Update the global avatar in the header
-                    if (globalUserPicBubble) {
-                        globalUserPicBubble.style.backgroundImage = `url('${e.target.result}')`;
-                    }
-                    
-                    // Save image to localStorage for persistence
-                    localStorage.setItem('almty_user_avatar', e.target.result);
-                };
-                
-                reader.readAsDataURL(input.files[0]);
+        // Helper function to get isolated user key for images
+function getUserAvatarKey() {
+    const currentUser = sessionStorage.getItem('current_user') || 'GHOST';
+    return `avatar_${currentUser.toLowerCase()}`;
+}
+
+// 1. HANDLE AVATAR UPLOAD (ISOLATED PER USER)
+function handleAvatarUpload(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const base64Image = e.target.result;
+            const preview = document.getElementById('edit-avatar-preview');
+            
+            if (preview) {
+                preview.style.backgroundImage = `url('${base64Image}')`;
+                preview.innerText = ''; // Clear default letter initial
             }
+
+            // Save image under THIS USER'S UNIQUE KEY ONLY
+            localStorage.setItem(getUserAvatarKey(), base64Image);
+            
+            // Also update top HUD profile bubble
+            const hudBubble = document.querySelector('.user-pic-bubble');
+            if (hudBubble) {
+                hudBubble.style.backgroundImage = `url('${base64Image}')`;
+                hudBubble.style.backgroundSize = 'cover';
+                hudBubble.style.backgroundPosition = 'center';
+                const initialSpan = document.getElementById('user-initial');
+                if (initialSpan) initialSpan.style.display = 'none';
+            }
+        };
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 2. SUBMIT PROFILE SYNC TO BACKEND & MONGODB
+async function submitProfileSync() {
+    const nameInput = document.getElementById('edit-display-name-input');
+    const newUsername = nameInput ? nameInput.value.toLowerCase().trim() : '';
+    const token = sessionStorage.getItem('almty_token');
+    const userAvatar = localStorage.getItem(getUserAvatarKey()) || '';
+
+    if (!newUsername) {
+        alert('[PROTOCOL_ERROR]: PATRON_DISPLAY_NAME_REQUIRED');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/users/update-profile`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                username: newUsername,
+                avatarUrl: userAvatar
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Update local session state
+            sessionStorage.setItem('current_user', data.username);
+            
+            // If username was changed, migrate avatar storage to new username key
+            if (data.username !== currentUser) {
+                localStorage.setItem(`avatar_${data.username.toLowerCase()}`, userAvatar);
+                currentUser = data.username;
+            }
+
+            // Update HUD display
+            const initialSpan = document.getElementById('user-initial');
+            if (initialSpan) initialSpan.innerText = data.username.charAt(0).toUpperCase();
+
+            alert('[SUCCESS]: DOSSIER_UPDATED_AND_SYNCED_TO_NODE.');
+        } else {
+            alert(`[PROTOCOL_ERROR]: ${data.message.toUpperCase()}`);
         }
+    } catch (err) {
+        console.error("Profile Sync Error:", err);
+        alert('[PROTOCOL_ERROR]: FAILED_TO_SYNC_PROFILE_TO_RENDER');
+    }
+}
         async function submitOnboardingProfile() {
             const name = document.getElementById('onboard-name').value.trim();
             const address = document.getElementById('onboard-address').value.trim();
