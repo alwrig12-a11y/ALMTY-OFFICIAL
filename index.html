@@ -2128,6 +2128,10 @@ function finishLoadingBar() {
         if (isMasterOverseer) {
             sessionStorage.setItem('is_master', 'true');
         }
+
+        // --- MODULE B: SIT-DOWN ACTIVITY CLOCK CHECK ---
+        checkDutyStatus();
+
         document.getElementById('gateway-overlay').style.opacity = '0';
         setTimeout(() => {
             document.getElementById('gateway-overlay').style.display = 'none';
@@ -3546,7 +3550,35 @@ async function verifyHemCode()
                         <button class="btn-buy" style="border-color:var(--socio-green); color:var(--socio-green); margin-top:20px;" onclick="submitProfileSync()">
                             SYNC_CHANGES_TO_NODE
                         </button>
+                    </div>
+
+                    <div class="handshake-terminal" style="max-width:500px; margin-top: 25px; border-color: var(--canary-yellow);">
+                        <span class="handshake-label" style="color: var(--canary-yellow);">03 // SIT_DOWN_CLOCK [30_DAY_ACTIVITY_CHECK]</span>
+                        <p style="font-size: 10px; color: var(--military-white); line-height: 1.5; margin-bottom: 15px;">
+                            OPERATIVES RANKED SOLDATO OR HIGHER MUST REPORT FOR DUTY EVERY 30 DAYS TO MAINTAIN UNBLURRED CLEARANCE TO ARCHIVE & SANCTUM VAULTS.
+                        </p>
+                        
+                        <div id="duty-clock-status" style="font-size: 11px; color: var(--socio-green); margin-bottom: 15px;">
+                            STATUS: CHECKING_TELEMETRY...
+                        </div>
+
+                        <button 
+                            id="btn-report-duty" 
+                            class="btn-buy" 
+                            style="border-color: var(--canary-yellow); color: var(--canary-yellow); position: relative; overflow: hidden; user-select: none;"
+                            onmousedown="startBiometricHold()" 
+                            onmouseup="cancelBiometricHold()" 
+                            onmouseleave="cancelBiometricHold()"
+                            ontouchstart="startBiometricHold()" 
+                            ontouchend="cancelBiometricHold()"
+                        >
+                            <div id="hold-progress-fill" style="position: absolute; top:0; left:0; height:100%; width:0%; background: rgba(255, 215, 0, 0.3); transition: width 0.1s linear;"></div>
+                            <span id="hold-btn-text" style="position: relative; z-index: 2;">HOLD 3 SECONDS TO REPORT FOR DUTY</span>
+                        </button>
                     </div>`;
+
+                    // Trigger telemetry check right after DOM injection
+                    setTimeout(() => { checkDutyStatus(); }, 100);
                 }
             }
             
@@ -3940,6 +3972,109 @@ async function submitStripePayment() {
         console.error("Payment Execution Error:", err);
         btnPay.innerText = 'EXECUTE_HANDSHAKE_SETTLEMENT';
         btnPay.disabled = false;
+    }
+}
+
+
+let holdTimer = null;
+let holdStartTime = 0;
+const HOLD_DURATION_MS = 3000;
+
+// Check duty status on boot/login
+async function checkDutyStatus() {
+    const token = sessionStorage.getItem('almty_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/users/check-duty-status`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            sessionStorage.setItem('is_duty_blurred', data.isDutyBlurred ? 'true' : 'false');
+
+            const statusEl = document.getElementById('duty-clock-status');
+            if (statusEl) {
+                if (data.isDutyBlurred) {
+                    statusEl.innerText = "STATUS: [PHASE_1_BLUR_ACTIVE] - SIT_DOWN_REQUIRED";
+                    statusEl.style.color = "var(--alert-red)";
+                } else {
+                    statusEl.innerText = `STATUS: CLEARANCE_ACTIVE (${data.daysRemaining} DAYS REMAINING)`;
+                    statusEl.style.color = "var(--socio-green)";
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Duty status check failed:", err);
+    }
+}
+
+// 3-Second Press-and-Hold Logic
+function startBiometricHold() {
+    const fill = document.getElementById('hold-progress-fill');
+    const btnText = document.getElementById('hold-btn-text');
+    if (!fill || !btnText) return;
+
+    holdStartTime = Date.now();
+    btnText.innerText = "ANALYZING_BIOMETRICS...";
+
+    holdTimer = setInterval(() => {
+        const elapsed = Date.now() - holdStartTime;
+        const progressPercent = Math.min(100, (elapsed / HOLD_DURATION_MS) * 100);
+        fill.style.width = `${progressPercent}%`;
+
+        if (elapsed >= HOLD_DURATION_MS) {
+            clearInterval(holdTimer);
+            executeReportForDuty();
+        }
+    }, 50);
+}
+
+function cancelBiometricHold() {
+    if (holdTimer) clearInterval(holdTimer);
+    const fill = document.getElementById('hold-progress-fill');
+    const btnText = document.getElementById('hold-btn-text');
+    
+    if (fill) fill.style.width = '0%';
+    if (btnText) btnText.innerText = "HOLD 3 SECONDS TO REPORT FOR DUTY";
+}
+
+async function executeReportForDuty() {
+    const btnText = document.getElementById('hold-btn-text');
+    if (btnText) btnText.innerText = "VERIFYING_CLEARANCE...";
+
+    try {
+        const token = sessionStorage.getItem('almty_token');
+        const response = await fetch(`${API_URL}/api/users/report-for-duty`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`[DUTY_REPORTED]: BIOMETRICS VERIFIED. CLOCK RESET TO 30 DAYS.\n+50 RESPETO AWARDED.`);
+            sessionStorage.setItem('is_duty_blurred', 'false');
+            cancelBiometricHold();
+            checkDutyStatus();
+            
+            // Refresh HUD Respeto display if element exists
+            const respetoDisp = document.getElementById('respeto-disp');
+            if (respetoDisp && data.respeto !== undefined) {
+                respetoDisp.innerText = data.respeto.toLocaleString();
+            }
+        } else {
+            alert(`[PROTOCOL_ERROR]: ${data.message.toUpperCase()}`);
+            cancelBiometricHold();
+        }
+    } catch (err) {
+        console.error("Report for duty error:", err);
+        alert('[PROTOCOL_ERROR]: FAILED_TO_CONNECT_TO_NODE');
+        cancelBiometricHold();
     }
 }
     </script>
