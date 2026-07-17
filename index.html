@@ -1544,29 +1544,7 @@
             </div>
         </div>
     </div>
-    <div id="main-site" style="display:none;">
-    <h1>ALMTY // SOVEREIGN_VAULT</h1>
-    <nav>
-        <button>COLLECTIONS</button>
-        <button>IDENTITY</button>
-    </nav>
-
-    <div class="overseer-only" style="display:none; border: 1px solid red; padding: 20px;">
-        <h3>COMMAND_CENTER: ARCHITECT_CLEARANCE</h3>
-        <button onclick="viewSocioLedger()">VIEW_SOCIO_WAITLIST</button>
-        <button onclick="updateStock()">RESTOCK_ASSETS</button>
-    </div>
-    </div>
-    <div id="main-site" style="display: none;">
-    <h1>ALMTY // OFFICIAL_VAULT</h1>
-
-    <div class="overseer-only" style="display: none; border: 2px solid var(--socio-green); padding: 20px; margin-top: 20px;">
-        <h2 style="color: var(--socio-green);">>> COMMAND_CENTER: ARCHITECT_CLEARANCE <<</h2>
-        <p>REPETO_SYSTEM: ONLINE</p>
-        <button onclick="openSocioLedger()">VIEW_WAITLIST_LEDGER</button>
-        <button onclick="adjustInventory()">MANAGE_ASSETS</button>
-    </div>
-    </div>
+   
     <script>
         // THE ALMTY NODE ROUTER
     const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -2173,19 +2151,6 @@ function finishLoadingBar() {
                 }
             }
 
-            // Load saved avatar or use default logo
-            const savedAvatar = localStorage.getItem('almty_user_avatar');
-            const userInitial = document.getElementById('user-initial');
-            const userPicBubble = document.querySelector('.user-pic-bubble');
-            
-            if (savedAvatar && userPicBubble) {
-                userPicBubble.style.backgroundImage = `url('${savedAvatar}')`;
-                if (userInitial) userInitial.style.display = 'none';
-            } else {
-                // Default: show logo (set in CSS) and hide initial text
-                if (userInitial) userInitial.style.display = 'none';
-            }
-
             if (isMasterOverseer) {
                 setRank(5); 
                 updateSidebar();
@@ -2459,9 +2424,8 @@ async function verifyHemCode()
                 size: selectedSize
             });
             
-            localStorage.setItem('stashStream', JSON.stringify(stashStream));
+            saveStashStream(stashStream);
             
-            document.getElementById('cart-count').innerText = stashStream.length;
             selectedSize = null;
             
             alert(`[PROTOCOL]: ${asset.name} SECURED TO STASH_STREAM.`);
