@@ -742,6 +742,21 @@
             background: rgba(0,255,0,0.05); 
         }
 
+        #btn-report-duty 
+        {
+            /* Prevents the standard text highlight/selection cursor on mobile */
+            -webkit-user-select: none;  /* Safari/Chrome iOS */
+            -moz-user-select: none;     /* Firefox */
+            -ms-user-select: none;      /* IE/Edge */
+            user-select: none;          /* Standard */
+            
+            /* Prevents the default mobile long-press magnifying glass/callout menu */
+            -webkit-touch-callout: none; 
+            
+            /* Prevents blue tap-highlight flashing on mobile taps */
+            -webkit-tap-highlight-color: transparent;
+        }
+
         /* ========================================================================
            PRODUCT DETAIL VIEW
            The deep-dive specification interface for individual assets.
@@ -3586,7 +3601,7 @@ async function verifyHemCode()
                         <button 
                             id="btn-report-duty" 
                             class="btn-buy" 
-                            style="border-color: var(--canary-yellow); color: var(--canary-yellow); position: relative; overflow: hidden; user-select: none;"
+                            style="border-color: var(--canary-yellow); color: var(--canary-yellow); position: relative; overflow: hidden; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;"
                             onmousedown="startBiometricHold()" 
                             onmouseup="cancelBiometricHold()" 
                             onmouseleave="cancelBiometricHold()"
