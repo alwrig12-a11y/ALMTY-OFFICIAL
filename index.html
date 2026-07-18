@@ -3577,8 +3577,20 @@ async function verifyHemCode()
                         </button>
                     </div>`;
 
+                    // APPEND GLOBAL FOOTER & RENDER TO DOM CORRECTLY
+                    pageBody += `
+                        </div>
+                        <div class="global-tab-footer">
+                            ALMTY LLC // EIN: 33-2507723 // LOUISVILLE, KY // &copy; 2026 ALL RIGHTS RESERVED. 
+                            <br>NOTICE: ALL PROTOCOLS AND VISUAL IDENTITIES ARE THE EXCLUSIVE INTELLECTUAL PROPERTY OF ALMTY LLC.
+                        </div>
+                    `;
+                    
+                    view.innerHTML = pageBody;
+
                     // Trigger telemetry check right after DOM injection
                     setTimeout(() => { checkDutyStatus(); }, 100);
+                    return; // Terminate block cleanly
                 }
             }
             
