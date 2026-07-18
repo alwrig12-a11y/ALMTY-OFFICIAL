@@ -327,12 +327,14 @@
         .gateway-button-trio 
         {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 15px;
-            margin-bottom: 15px;
+            flex-direction: row;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+            margin-bottom: 25px;
             width: 100%;
-            max-width: 320px;
+            max-width: 800px;
+            box-sizing: border-box;
         }
 
         .btn-signup 
@@ -343,11 +345,12 @@
             color: #444444;
             font-family: 'JetBrains Mono', monospace;
             font-size: 9px;
-            padding: 10px 15px;
+            padding: 12px 20px;
             cursor: pointer;
-            transition: 0.3s;
+            transition: all 0.3s ease;
             letter-spacing: 2px;
-            width: 100%;
+            flex: 1; /* Ensures buttons stretch equally in the row */
+            white-space: nowrap; /* Prevents text from wrapping */
             box-sizing: border-box;
         }
 
@@ -355,6 +358,24 @@
         {
             color: var(--socio-green);
             border-color: var(--socio-green);
+            background: rgba(0, 255, 0, 0.02);
+        }
+
+        /* Responsive Mobile Shift (Phones & Tablets) */
+        @media (max-width: 768px) 
+        {
+            .gateway-button-trio 
+            {
+                flex-direction: column; /* Stacks buttons vertically on small screens */
+                max-width: 320px;
+                gap: 10px; /* Adds spacing between stacked buttons */
+            }
+            .btn-signup 
+            {
+                width: 100%; /* Ensures buttons take full width in stacked mode */
+                font-size: 8px;
+                padding: 10px 15px; /* Adjusts padding for smaller screens */
+            }
         }
 
         /* ========================================================================
@@ -505,7 +526,7 @@
             display: flex; 
             flex: 1; 
             min-height: 0; 
-            flex-direction: column; 
+            flex-direction: row; 
         }
 
         .sidebar 
